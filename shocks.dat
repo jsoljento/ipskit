@@ -1,0 +1,44 @@
+Spacecraft ID (0=ACE,1=Wind,2=STEREO A,3=STEREO B,4=HELIOS A,5=HELIOS B,
+               6=Ulysses,7=Cluster 3, 8=Cluster 1, 9=Cluster 4, 10=OMNI, 
+               11=Voyager 1, 12=Voyager 2, 13=DSCOVR, 14=PSP, 15=SolO)
+10
+Show plots for events (1=yes, 0=no). Set to no (0) for the preliminary run.
+1
+Apply filter for bad datapoints (0=DO NOT APPLY; 1=APPLY USING DEFAULT
+SETTINGS; CUSTOM VALUES: filter_length, tol_Np, tol_Tp, tol_V = FILTER WILL BE
+APPLIED USING THESE SETTINGS, see readme-file for more information)
+0
+The shock times (year,month,day,hour,minute,second)
+2019    07    08    19    28    00 
+2019    11    16    12    58    25 
+2019    11    22    02    16    18 
+2020    11    30    02    45    20 
+2021    02    01    23    44    00 
+2021    05    26    12    51    06 
+2021    06    02    13    37    38 
+2021    08    27    01    20    00 
+2021    08    29    20    41    28 
+2021    11    03    20    23    30 
+2021    12    27    09    38    33 
+2022    01    18    23    42    38 
+2022    03    10    17    31    09 
+2022    03    28    01    32    28 
+2022    04    27    05    15    54 
+2022    05    11    14    14    24 
+2022    07    11    17    16    21 
+2023    01    23    03    48    41 
+2023    03    08    01    44    29
+2023    05    07    21    34    30 
+2023    08    18    23    57    31
+2023    09    05    15    26    56
+2023    09    17    02    27    23 
+2023    09    28    21    40    37 
+2023    10    03    12    21    40 
+2023    10    13    22    44    29 
+2023    11    25    08    37    01 
+2023    12    01    00    22    31 
+2023    12    13    22    34    45 
+2023    12    19    06    21    44 
+2024    02    08    20    04    26 
+2024    02    14    23    01    44 
+2024    02    24    16    51    16 
