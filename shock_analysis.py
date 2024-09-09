@@ -795,7 +795,7 @@ header = (
     "Vy_up                 Vz_up                "
     "V_down                  Vx_down                 "
     "Vy_down               Vz_down               "
-    "Vjump                  Np_up                "
+    "V_jump                 Np_up                "
     "Np_down                Np_ratio              "
     "Tp_up                 Tp_down               "
     "Tp_ratio             Cs_up                 "
