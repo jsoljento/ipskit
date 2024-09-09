@@ -10,10 +10,11 @@
 # toolkit are described at https://ipshocks.helsinki.fi/documentation.
 #
 # This toolkit was originally developed by Erkka Lumme in 2017 and it was
-# written in IDL. It was translated to Python by Timo Mäkelä in 2024. During
-# translation the Parker Solar Probe (PSP) and Solar Orbiter (SolO) spacecraft
-# were added, and the code was simplified to better suit the current workflow
-# where shocks are found using the automated machine learning algortihm IPSVM
+# written in IDL. It was translated to Python by Timo Mäkelä in 2024. Further
+# edits have been made by Juska Soljento. During translation the Parker Solar
+# Probe (PSP) and Solar Orbiter (SolO) spacecraft were added, and the code was
+# simplified to better suit the current workflow where shocks are found using
+# the automated machine learning algortihm IPSVM
 # (https://bitbucket.org/raysofspace/ipsvm).
 # ------------------------------------------------------------------------------
 
@@ -296,7 +297,8 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     interval_times = t_lower_res[interval_mask]
     n_interval_ticks = len(interval_times)
 
-    # Determine the minimum resolution over all the considered plasma data points
+    # Determine the minimum resolution over all the considered plasma data
+    # points.
     ind_pla = np.concatenate(
         ([interval_mask[0] - 1], interval_mask, [interval_mask[-1] + 1]))
     diffs = np.abs(np.diff(t_lower_res[ind_pla]))
@@ -338,7 +340,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     # Initialize an array where the averaged values will be added.
     resampled_data = np.zeros(n_interval_ticks)
 
-    # Looping through the bins and averaging the data.
+    # Loop through the bins and average the data.
     for j in range(n_interval_ticks):
         # Find indices of t_original which are within the current bin range.
         indices = np.where(
@@ -359,6 +361,25 @@ normal_eq_input = {}
 
 
 def solve_normal_eq(vec_1, vec_2):
+    """Solve the normal equation to find the shock normal.
+
+    This function takes two vectors (which are different combinations of
+    the magnetic field and plasma velocity on either side of the shock), and
+    uses scipy.optimize.fsolve to determine the shock normal vector.
+
+    Parameters
+    ----------
+    vec_1 : array_like
+        First vector input.
+    vec_2 : array_like
+        Second vector input.
+
+    Returns
+    -------
+    normal : array_like
+        The shock normal vector.
+    """
+
     global normal_eq_input
     normal_eq_input['A'] = vec_1[0]
     normal_eq_input['B'] = vec_1[1]
@@ -374,6 +395,24 @@ def solve_normal_eq(vec_1, vec_2):
 
 
 def normal_equation(N):
+    """The set of equations used in finding the shock normal vector.
+
+    This function defines three equations that are used to determine the
+    shock normal vector. The first two correspond to dot products between
+    the input vector and two other vectors (these are given as inputs to
+    solve_normal_eq), and the third one is required to make sure that the
+    solution is a unit vector.
+
+    Parameters
+    ----------
+    N : array_like
+        Input vector
+
+    Returns
+    -------
+    eqns : list
+        Three constraining equations in a list.
+    """
     global normal_eq_input
     A = normal_eq_input['A']
     B = normal_eq_input['B']
@@ -389,33 +428,89 @@ def normal_equation(N):
     ]
 
 
-def normal_sign(normal, type, V_vector_up):
+def normal_sign(normal, shock_type, V_vector_up):
+    r"""Determine the sign, i.e., the direction, of the shock normal.
+
+    This functions determines the sign of the shock normal vector such that
+    :math:`V_{\mathrm{up}}\cdot\hat{n} \geq 0` for a fast-forward (FF) shock
+    and :math:`V_{\mathrm{up}}\cdot\hat{n} \leq 0` for a fast-reverse (FR)
+    shock.
+
+    Parameters
+    ----------
+    normal : array_like
+        Shock normal vector.
+    shock_type : int
+        Shock type, 1 for an FF-shock and 2 for an FR-shock.
+    V_vector_up : array_like
+        Upstream plasma velocity vector.
+
+    Returns
+    -------
+    sign * normal : array_like
+        Correctly signed shock normal vector.
+    """
+
     sign = 1
-    if (type == 1 and np.dot(normal, V_vector_up) < 0) or (type == 2 and np.dot(normal, V_vector_up) > 0):
+
+    if ((shock_type == 1 and np.dot(normal, V_vector_up) < 0)
+            or (shock_type == 2 and np.dot(normal, V_vector_up) > 0)):
         sign = -1
+
     return sign * normal
 
 
-def shock_normal(type, B_vector_up, B_vector_down, V_vector_up, V_vector_down, method):
+def shock_normal(
+        shock_type, B_vector_up, B_vector_down,
+        V_vector_up, V_vector_down, method):
+    """Calculate the shock normal vector.
+
+    This function first calculates the shock normal using one of three
+    available methods and then determines the correct sign for the normal.
+    The function raises an error if the shock normal cannot be determined
+    successfully.
+
+    Parameters
+    ----------
+    shock_type : int
+        Shock type, 1 for an FF-shock and 2 for an FR-shock.
+    B_vector_up : array_like
+        Upstream magnetic field vector.
+    B_vector_down : array_like
+        Downstream magnetic field vector.
+    V_vector_up : array_like
+        Upstream plasma velocity vector.
+    V_vector_down : array_like
+        Downstream plasma velocity vector.
+    method : int
+        Shock normal calculation method ID: 0 = MX3, 1 = MFC,
+        2 = MX1 + MX2 average, 3 = MVA (not implemented). See IPShocks
+        documentation for details.
+
+    Returns
+    -------
+    normal : array_like
+        The shock normal vector.
+    """
 
     B_vector_up = np.array(B_vector_up)
     B_vector_down = np.array(B_vector_down)
     V_vector_up = np.array(V_vector_up)
     V_vector_down = np.array(V_vector_down)
+
     check = 0
 
     if method == 0:
-        vec_1 = np.cross(B_vector_down - B_vector_up, V_vector_down - V_vector_up)
+        vec_1 = np.cross(
+            B_vector_down - B_vector_up, V_vector_down - V_vector_up)
         vec_2 = B_vector_down - B_vector_up
         normal = solve_normal_eq(vec_1, vec_2)
-        normal = normal_sign(normal, type, V_vector_up)
-    
+        normal = normal_sign(normal, shock_type, V_vector_up)
     elif method == 1:
         vec_1 = np.cross(B_vector_down, B_vector_up)
         vec_2 = B_vector_down - B_vector_up
         normal = solve_normal_eq(vec_1, vec_2)
-        normal = normal_sign(normal, type, V_vector_up)
-    
+        normal = normal_sign(normal, shock_type, V_vector_up)
     elif method == 2:
         normals = np.zeros((3, 2))
         checks = np.zeros(2)
@@ -425,16 +520,17 @@ def shock_normal(type, B_vector_up, B_vector_down, V_vector_up, V_vector_down, m
                 vec_1 = np.cross(B_vector_up, (V_vector_down - V_vector_up))
             vec_2 = B_vector_down - B_vector_up
             normal = solve_normal_eq(vec_1, vec_2)
-            normals[:, j] = normal_sign(normal, type, V_vector_up)
+            normals[:, j] = normal_sign(normal, shock_type, V_vector_up)
         normal = np.mean(normals, axis=1)
         normal /= np.linalg.norm(normal)
         check = np.sum(checks)
-    
     elif method == 3:
         return np.array([1.0, 0.0, 0.0])
     
     if check != 0:
-        print('Method to calculate the normal vector did not converge. Program stops.')
+        print(
+            'The method to calculate the normal vector did not converge. '
+            'The program stops.')
         raise RuntimeError('Convergence issue in solving the normal vector.')
     
     return normal
@@ -442,97 +538,114 @@ def shock_normal(type, B_vector_up, B_vector_down, V_vector_up, V_vector_down, m
 
 # Initialize a global variable to store the reference to the vertical line
 # in the plotting windows.
-
 last_vline = []
 unclear = False
 
 
 # Define a function to handle key press events
 def on_key(event):
-    global last_vline, last_click_time, time_adjusted, unclear # Use the global variables
+    """Function to handle key press events when evaluating the shock plot.
+
+    During the analysis run a shock plot is displayed. During this the user
+    can fine tune the shock time as well as mark the shock down as an unclear
+    shock. This function enables the user to do these tasks using the arrow
+    keys.
+
+    Parameters
+    ----------
+    event : KeyEvent
+        Key press event, left or right to shift the shock time one second back
+        or forward, respectively, down to save the current shock time, and
+        up to mark the event as unclear.
+    """
+
+    global last_vline, last_click_time, time_adjusted, unclear
+
+    line_kwargs = dict(color='blue', linestyle='--', linewidth=1)
 
     for ax in axs:
-                for annotation in ax.texts:
-                    annotation.remove()
+        for annotation in ax.texts:
+            annotation.remove()
 
     if event.key == 'right':
         if last_click_time:
-            new_time = last_click_time + timedelta(seconds=1)  # Increment time by 1 second
+            new_time = last_click_time + timedelta(seconds=1)
 
-            # Remove previous vertical lines
+            # Remove previous vertical lines.
             if last_vline:
                 for line in last_vline:
                     line.remove()
                 last_vline = []
 
-            # Draw new vertical line at updated time
+            # Draw a new vertical line at the updated time.
             last_vline = []
             for ax in axs:
-                vline = ax.axvline(new_time, color='blue', linestyle='--', linewidth=1)
+                vline = ax.axvline(new_time, **line_kwargs)
                 last_vline.append(vline)
 
-            # Update last click time
+            # Update the last click time.
             last_click_time = new_time
 
             fig.canvas.draw()
-
     elif event.key == 'left':
         if last_click_time:
-            new_time = last_click_time - timedelta(seconds=1)  # Decrement time by 1 second
+            new_time = last_click_time - timedelta(seconds=1)
 
-            # Remove previous vertical lines
+            # Remove previous vertical lines.
             if last_vline:
                 for line in last_vline:
                     line.remove()
                 last_vline = []
             
-            # Draw new vertical line at updated time
+            # Draw a new vertical line at the updated time.
             last_vline = []
             for ax in axs:
-                vline = ax.axvline(new_time, color='blue', linestyle='--', linewidth=1)
+                vline = ax.axvline(new_time, **line_kwargs)
                 last_vline.append(vline)
 
             # Update last click time
             last_click_time = new_time
 
             fig.canvas.draw()
-        
     elif event.key == 'down':
         time_adjusted = True
         if last_click_time:
-            formatted_final_time = last_click_time.strftime("%Y    %#m    %#d    %#H    %#M    %#S")
+            formatted_final_time = last_click_time.strftime(
+                "%Y    %#m    %#d    %#H    %#M    %#S")
 
-            with open(shock_times_out_fnam, 'a') as f:
-            # Write to file (assuming 'filnum1' is the file object)
+            with open(shock_times_out_fname, 'a') as f:
                 f.write(formatted_final_time + '\n')
 
-            # Remove previous vertical line if it exists
+            # Remove the previous vertical line if it exists.
             if last_vline:
                 for line in last_vline:
                     line.remove()
                 last_vline = []
 
-            # Draw new vertical line starting from shock time
+            # Draw a new vertical line starting from the shock time.
             last_vline = []
             for ax in axs:
-                vline = ax.axvline(last_click_time, color='black', linestyle='--', linewidth=1)
+                vline = ax.axvline(
+                    last_click_time, color='black', linestyle='--',
+                    linewidth=1)
                 last_vline.append(vline)
 
             text_to_print = f"Time saved:\n{formatted_final_time}"
             
-            # Add new annotation above the title in the top subplot
-            axs[0].annotate(text_to_print, xy=(0.5, 1.3), xycoords='axes fraction',
-                            ha='center', va='center', fontsize=12)
+            # Add a new annotation above the title in the top subplot.
+            axs[0].annotate(
+                text_to_print, xy=(0.5, 1.3), xycoords='axes fraction',
+                ha='center', va='center', fontsize=12)
 
             fig.canvas.draw()
-
     elif event.key == 'up':
         unclear = True
         text_to_print = "Event marked as unclear"
             
-        # Add new annotation above the title in the top subplot
-        axs[0].annotate(text_to_print, xy=(0.5, 1.3), xycoords='axes fraction',
-                        ha='center', va='center', fontsize=12)
+        # Add a new annotation above the title in the top subplot.
+        axs[0].annotate(
+            text_to_print, xy=(0.5, 1.3), xycoords='axes fraction',
+            ha='center', va='center', fontsize=12)
 
         fig.canvas.draw()
 
@@ -542,14 +655,14 @@ def on_key(event):
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
-# Advanced settings (see ReadMe before changing these)
+# Advanced settings (see documentation before changing these)
 # ------------------------------------------------------------------------------
 
-shock_times_fnam = 'shocks.dat'  # Shock time data file
+shock_times_fname = 'shocks.dat'  # Shock time data file
 
-shock_times_out_fnam = 'shocks_out.dat'  # If shock times are preliminary, better estimates are saved here.
+shock_times_out_fname = 'shocks_out.dat'  # If shock times are preliminary, better estimates are saved here.
 
-analysis_output_fnam = 'shock_parameters.dat'  # Output file of the analysis results
+analysis_output_fname = 'shock_parameters.dat'  # Output file of the analysis results
 
 orig_normal_method_ID = 0  # Original method to determine the shock normal
 
@@ -570,7 +683,7 @@ unclear_csv_file_directory = 'unclear_shock_parameters.csv'
 # Reading the input file
 # ------------------------------------------------------------------------------
 
-with open(shock_times_fnam, 'r') as file:
+with open(shock_times_fname, 'r') as file:
     lines = file.readlines()
     N_sh = len(lines) - 11  # number of shock events
 
@@ -662,7 +775,7 @@ with open(shock_times_fnam, 'r') as file:
 # ------------------------------------------------------------------------------
 
 # Initialize the output file
-with open(shock_times_out_fnam, 'w') as file1:
+with open(shock_times_out_fname, 'w') as file1:
     file1.write(comment21 + '\n')
     file1.write('\t\t\t   ' + comment22 + '\n')
     file1.write('\t\t\t   ' + comment23 + '\n')
@@ -678,7 +791,7 @@ with open(shock_times_out_fnam, 'w') as file1:
 # Initialize the analysis parameter file and write header to the file
 header = "Year Month Day     Hour  Minute Sec  Type    Position                           B_up                  Bx_up                  By_up                 Bz_up                   B_down                   Bx_down              By_down                Bz_down                  B_ratio                 V_up                      Vx_up                     Vy_up                  Vz_up                      V_down                    Vx_down                 Vy_down                 Vz_down                      Vjump                    Np_up                     Np_down                   Np_ratio                 Tp_up                    Tp_down                  Tp_ratio                Cs_up                   Va_up                    Vms_up                     Beta_up                  n_vector                                                            Theta                   Vsh                        M_A                      Mms                    V_quality Analysis int length Mag data res Pla data res"
 
-with open(analysis_output_fnam, 'w') as file2:
+with open(analysis_output_fname, 'w') as file2:
     file2.write(header + '\n')
 
 # Initialize csv file first header line
@@ -1326,9 +1439,9 @@ for i in range(0, N_sh):
                                 doo_beta_doo_Te, V_shock, M_A_up, Mms_up,
                                 normal,
                                 normal_method_ID, shock_type)
-    # ------------------------------------------------------------------------------
-    # Drawing a ps.-plots in a file (named e.g. '19980205_2105.ps')
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # Drawing a PS plot in a file (named, e.g., '19980205_2105.ps')
+    # --------------------------------------------------------------------------
 
     # jumping to here if jump_to_plotting was set to true
     month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug',
@@ -1526,7 +1639,7 @@ for i in range(0, N_sh):
 
     t_print = time.strftime("%Y    %#m    %#d    %#H    %#M    %#S",
                             time.localtime(t_shock[i]))
-    with open(shock_times_out_fnam, 'a') as file3:
+    with open(shock_times_out_fname, 'a') as file3:
         # Write to file (assuming 'filnum1' is the file object)
         if type != 0 and not time_adjusted:
             file3.write(t_print + '\n')
@@ -1631,7 +1744,7 @@ for i in range(0, N_sh):
         f"{avg_res_pla:.1f}"
     )
 
-    with open(analysis_output_fnam, 'a') as file2:
+    with open(analysis_output_fname, 'a') as file2:
         # Write to file (assuming 'filnum2' is the file object)
         file2.write(output_line + '\n')
 
