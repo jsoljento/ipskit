@@ -529,9 +529,9 @@ def shock_normal(
     
     if check != 0:
         print(
-            'The method to calculate the normal vector did not converge. '
-            'The program stops.')
-        raise RuntimeError('Convergence issue in solving the normal vector.')
+            "The method to calculate the normal vector did not converge. "
+            "The program stops.")
+        raise RuntimeError("Convergence issue in solving the normal vector.")
     
     return normal
 
@@ -658,26 +658,30 @@ def on_key(event):
 # Advanced settings (see documentation before changing these)
 # ------------------------------------------------------------------------------
 
-shock_times_fname = 'shocks.dat'  # Shock time data file
+# Shock time data file.
+shock_times_fname = 'shocks.dat'
 
-shock_times_out_fname = 'shocks_out.dat'  # If shock times are preliminary, better estimates are saved here.
+# If shock times are preliminary, better estimates are saved here.
+shock_times_out_fname = 'shocks_out.dat'
 
-analysis_output_fname = 'shock_parameters.dat'  # Output file of the analysis results
+# Output file of the analysis results.
+analysis_output_fname = 'shock_parameters.dat'
 
-orig_normal_method_ID = 0  # Original method to determine the shock normal
+# The default and an alternative method for determining the shock normal.
+# The method IDs are: 0 = MX3, 1 = MFC, 2 = MX1 + MX2 average,
+# 3 = MVA (not implemented).
+orig_normal_method_ID = 0
+additional_normal_method_ID = 1
 
-additional_normal_method_ID = 1  # Additional method to determine the normal
-# when there is not enough velocity data.
-# Method_IDs: 0 = MX3-method, 1 = MFC-method,
-# 2 = MX1+MX2-avg-method, (3 = MVA-method)
+# Directory for saving the shock plots and the CSV file where the final results
+# for clear shocks are saved to.
+plot_directory = 'clear_shock_plots'
+csv_file = 'clear_shock_parameters.csv'
 
-plot_directory = 'clear_shock_plots'  # Directory to save the shock plots
-
-csv_file_directory = 'clear_shock_parameters.csv'
-
-unclear_plot_directory = 'unclear_shock_plots'  # Directory to save the unclear shock plots
-
-unclear_csv_file_directory = 'unclear_shock_parameters.csv'
+# Directory for saving the unclear shock plots and the CSV file where the final
+# results for unclear shocks are saved to.
+unclear_plot_directory = 'unclear_shock_plots'
+unclear_csv_file = 'unclear_shock_parameters.csv'
 
 # ------------------------------------------------------------------------------
 # Reading the input file
@@ -685,74 +689,62 @@ unclear_csv_file_directory = 'unclear_shock_parameters.csv'
 
 with open(shock_times_fname, 'r') as file:
     lines = file.readlines()
-    N_sh = len(lines) - 11  # number of shock events
+    N_sh = len(lines) - 11  # The number of shock events
 
-    # Initialize the header options
-    comment21 = ''
-    comment22 = ''
-    comment23 = ''
+    # Initialize the header options.
+    comment11 = ''
+    comment12 = ''
+    comment13 = ''
     SC_ID = 0
-    comment3 = ''
+    comment2 = ''
     plot_events = 0
-    comment51 = ''
-    comment52 = ''
-    comment53 = ''
+    comment31 = ''
+    comment32 = ''
+    comment33 = ''
     filter_line = 0
-    comment6 = ''
+    comment4 = ''
 
-    # Read the values for the header options from the opened input file
+  # Read the values for the header options from the opened input file.
     for i, line in enumerate(lines):
         if i == 0:
-            # comment21
-            comment21 = line.strip()
+            comment11 = line.strip()
         elif i == 1:
-            # comment22
-            comment22 = line.strip()
+            comment12 = line.strip()
         elif i == 2:
-            # comment23
-            comment23 = line.strip()
+            comment13 = line.strip()
         elif i == 3:
-            # SC_ID
             SC_ID = int(line.strip())
         elif i == 4:
-            # comment3
-            comment3 = line.strip()
+            comment2 = line.strip()
         elif i == 5:
-            # plot_events
             plot_events = int(line.strip())
         elif i == 6:
-            # comment51
-            comment51 = line.strip()
+            comment31 = line.strip()
         elif i == 7:
-            # comment52
-            comment52 = line.strip()
+            comment32 = line.strip()
         elif i == 8:
-            # comment53
-            comment53 = line.strip()
+            comment33 = line.strip()
         elif i == 9:
-            # filter option
             filter_line = line.strip()
         elif i == 10:
-            # comment6
-            comment6 = line.strip()
+            comment4 = line.strip()
 
-    # Checking which filter option was chosen
+    # Check which filter option was chosen.
     if filter_line == 0:  # No filtering
         filter_options = 0
 
     elif filter_line == 1:  # Default filter
         filter_options = 1
-
     else:  # User-defined four value filter
         filter_options = list(map(float, filter_line.split(',')))
 
-    # Initialize lists where candidate shock times will be stored
+    # Initialize lists where the candidate shock times will be stored.
     data = [[], [], [], [], [], []]  # Raw string data from the file
     shock_datetimes = []  # Datetime objects
-    shock_formatted_times = []  # e.g. 2001-01-01/02:01
-    t_shock = []  # Seconds since 1st of January 1970 (Unix Epoch)
+    shock_formatted_times = []  # e.g., 2001-01-01/02:01
+    t_shock = []  # Seconds since January 1, 1970 (Unix epoch)
 
-    # Reading the shock times from input txt file
+    # Read the shock times from input text file.
     for i in range(11, len(lines)):
         line = lines[i]
         year, month, day, hour, minute, second = line.split()
@@ -762,34 +754,60 @@ with open(shock_times_fname, 'r') as file:
         data[3].append(hour)
         data[4].append(minute)
         data[5].append(second)
-        datetime_format = datetime(int(year), int(month), int(day), int(hour),
-                                   int(minute), int(second))
+        datetime_format = datetime(
+            int(year), int(month), int(day),
+            int(hour), int(minute), int(second))
         shock_datetimes.append(datetime_format)
-        shock_formatted_times.append(datetime_format.strftime('%Y-%m-%d/%H:%M'))
+        shock_formatted_times.append(
+            datetime_format.strftime('%Y-%m-%d/%H:%M'))
 
-    t_shock = [(dt - datetime(1970, 1, 1)).total_seconds() for dt in
-               shock_datetimes]  # Changes time format to seconds since Jan 1, 1970.
+    # Change the time format to seconds since January 1, 1970.
+    t_shock = [
+        (dt - datetime(1970, 1, 1)).total_seconds() for dt in shock_datetimes]
 
 # ------------------------------------------------------------------------------
-# Initialization of the output of the analysis
+# Initializing the output of the analysis
 # ------------------------------------------------------------------------------
 
-# Initialize the output file
+# Initialize the output file.
 with open(shock_times_out_fname, 'w') as file1:
-    file1.write(comment21 + '\n')
-    file1.write('\t\t\t   ' + comment22 + '\n')
-    file1.write('\t\t\t   ' + comment23 + '\n')
+    file1.write(comment11 + '\n')
+    file1.write(f'{"": >15}' + comment12 + '\n')
+    file1.write(f'{"": >15}' + comment13 + '\n')
     file1.write(f'{SC_ID:2d}\n')
-    file1.write(comment3 + '\n')
+    file1.write(comment2 + '\n')
     file1.write(f'{plot_events:d}\n')
-    file1.write(comment51 + '\n')
-    file1.write(comment52 + '\n')
-    file1.write(comment53 + '\n')
+    file1.write(comment31 + '\n')
+    file1.write(comment32 + '\n')
+    file1.write(comment33 + '\n')
     file1.write(filter_line + '\n')
-    file1.write(comment6 + '\n')
+    file1.write(comment4 + '\n')
 
-# Initialize the analysis parameter file and write header to the file
-header = "Year Month Day     Hour  Minute Sec  Type    Position                           B_up                  Bx_up                  By_up                 Bz_up                   B_down                   Bx_down              By_down                Bz_down                  B_ratio                 V_up                      Vx_up                     Vy_up                  Vz_up                      V_down                    Vx_down                 Vy_down                 Vz_down                      Vjump                    Np_up                     Np_down                   Np_ratio                 Tp_up                    Tp_down                  Tp_ratio                Cs_up                   Va_up                    Vms_up                     Beta_up                  n_vector                                                            Theta                   Vsh                        M_A                      Mms                    V_quality Analysis int length Mag data res Pla data res"
+# Initialize the analysis parameter file and write the header to the file.
+header = (
+    "Year Month   Day  Hour   Min   Sec   Type       "
+    "Position                         B_up                    "
+    "Bx_up                   By_up                   "
+    "Bz_up                   B_down                  "
+    "Bx_down                 By_down                 "
+    "Bz_down                 B_ratio               "
+    "V_up                    Vx_up                   "
+    "Vy_up                 Vz_up                "
+    "V_down                  Vx_down                 "
+    "Vy_down               Vz_down               "
+    "Vjump                  Np_up                "
+    "Np_down                Np_ratio              "
+    "Tp_up                 Tp_down               "
+    "Tp_ratio             Cs_up                 "
+    "Va_up                 Vms_up                 "
+    "Beta_up               "
+    "n_vector                                                         "
+    "Theta                 Vsh                     "
+    "M_A                   Mms                   "
+    "V_quality "
+    "Analysis int length "
+    "Mag data res "
+    "Pla data res")
 
 with open(analysis_output_fname, 'w') as file2:
     file2.write(header + '\n')
@@ -840,10 +858,10 @@ header_line_csv = (
 )
 
 # Write the header to both unclear and clear csv files.
-with open(csv_file_directory, 'w') as file3:
+with open(csv_file, 'w') as file3:
     file3.write(header_line_csv + '\n')
 
-with open(unclear_csv_file_directory, 'w') as file4:
+with open(unclear_csv_file, 'w') as file4:
     file4.write(header_line_csv + '\n')
 
 # Initializing a list for events with insufficient data
@@ -1749,10 +1767,10 @@ for i in range(0, N_sh):
         file2.write(output_line + '\n')
 
     if unclear:
-        with open(unclear_csv_file_directory, 'a') as file4:
+        with open(unclear_csv_file, 'a') as file4:
             file4.write(output_line_csv + '\n')
     else:
-        with open(csv_file_directory, 'a') as file3:
+        with open(csv_file, 'a') as file3:
             file3.write(output_line_csv + '\n')
 
     # ------------------------------------------------------------------------------
