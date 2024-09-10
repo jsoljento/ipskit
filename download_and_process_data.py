@@ -1,39 +1,42 @@
 from datetime import datetime, timedelta
+
+from ai import cdas
 import numpy as np
 import pandas as pd
-from ai import cdas
+
 
 def download_and_process_data(shock_datetime, SC_ID, filter_options):
-
-    # One hour before and after the shock selected
+    # Select one hour before and after the shock.
     t_start = shock_datetime - timedelta(hours=1)
     t_end = shock_datetime + timedelta(hours=1)
 
-    
-    # Coverting from datetime to seconds after 1st Jan 1970 (Unix epoch)
+    # Convert the shock time from datetime to seconds after January 1,
+    # 1970 (Unix epoch).
     shock_epoch = int(shock_datetime.timestamp())
 
-
-    # ACE
-    if SC_ID == 0:
-        mag = cdas.get_data('sp_phys', 'AC_H0_MFI', t_start, t_end, ['Magnitude', 'BGSEc'])
-        pla = cdas.get_data('sp_phys', 'AC_H0_SWE', t_start, t_end, ['Np', 'Vp', 'Tpr', 'V_GSE'])
-        pos = cdas.get_data('sp_phys', 'AC_H0_MFI', t_start, t_end, ['SC_pos_GSE'])
+    if SC_ID == 0:  # ACE
+        mag = cdas.get_data(
+            'sp_phys', 'AC_H0_MFI', t_start, t_end, ['Magnitude', 'BGSEc'])
+        pla = cdas.get_data(
+            'sp_phys', 'AC_H0_SWE', t_start, t_end,
+            ['Np', 'Vp', 'Tpr', 'V_GSE'])
+        pos = cdas.get_data(
+            'sp_phys', 'AC_H0_MFI', t_start, t_end, ['SC_pos_GSE'])
 
         # Magnetic field data
         t_mag = mag['EPOCH'] + timedelta(seconds=8)
        
         B = mag['<|B|>'] 
-        Bx = mag['BX_GSE'] # B components
+        Bx = mag['BX_GSE']
         By = mag['BY_GSE']
         Bz = mag['BZ_GSE']
         
-        #Plasma data
-        t_pla = pla['EPOCH']  + timedelta(seconds=32)
+        # Plasma data
+        t_pla = pla['EPOCH'] + timedelta(seconds=32)
         Np = pla['H_DENSITY']
         V = pla['SW_H_SPEED']
         Tp = pla['H_TEMP_RADIAL']
-        Vx = pla['VX_(GSE)'] # V components
+        Vx = pla['VX_(GSE)']
         Vy = pla['VY_(GSE)']
         Vz = pla['VZ_(GSE)']
 
@@ -42,17 +45,19 @@ def download_and_process_data(shock_datetime, SC_ID, filter_options):
         pos_Y = pos['ACE_Y-GSE']
         pos_Z = pos['ACE_Z-GSE']
         t_pos = pos['EPOCH']
-
-        
-        # WIND
+    # WIND
     if SC_ID == 1:
-        mag = cdas.get_data('sp_phys', 'WI_H0_MFI', t_start, t_end, ['B3F1', 'B3GSE'])
-        pla = cdas.get_data('sp_phys', 'WI_K0_SWE', t_start, t_end, ['Np', 'V_GSE_plog', 'THERMAL_SPD', 'V_GSE'])
-        pos = cdas.get_data('sp_phys', 'WI_H0_MFI', t_start, t_end, ['PGSE'])
+        mag = cdas.get_data(
+            'sp_phys', 'WI_H0_MFI', t_start, t_end, ['B3F1', 'B3GSE'])
+        pla = cdas.get_data(
+            'sp_phys', 'WI_K0_SWE', t_start, t_end,
+            ['Np', 'V_GSE_plog', 'THERMAL_SPD', 'V_GSE'])
+        pos = cdas.get_data(
+            'sp_phys', 'WI_H0_MFI', t_start, t_end, ['PGSE'])
 
         # Magnetic field data
         B = mag['B']
-        Bx = mag['BX_(GSE)'] #B components
+        Bx = mag['BX_(GSE)']
         By = mag['BY_(GSE)']
         Bz = mag['BZ_(GSE)'] 
         t_mag = mag['EPOCH']
@@ -61,7 +66,7 @@ def download_and_process_data(shock_datetime, SC_ID, filter_options):
         Np = pla['ION_NP']
         V = pla['FLOW_SPEED'] 
         v_th = pla['SW_VTH']  
-        Vx = pla['VX_(GSE)'] #V components
+        Vx = pla['VX_(GSE)']
         Vy = pla['VY_(GSE)']
         Vz = pla['VZ_(GSE)'] 
         t_pla = pla['EPOCH']
@@ -75,9 +80,8 @@ def download_and_process_data(shock_datetime, SC_ID, filter_options):
         # Transform thermal speed to temperature
         Tp = 60.57376 * v_th**2
 
-        # Measurement bin radius for each data points (tag: "delta_time")
-        bin_rad_wind_pla = pla['DEL_TIME'] * 1e-3 # milliseconds to seconds
-
+        # Measurement bin radius for each data point
+        bin_rad_wind_pla = pla['DEL_TIME'] * 1e-3
     # STEREO-A
     if SC_ID == 2:
         mag = cdas.get_data('sp_phys', 'STA_L1_MAG_RTN', t_start, t_end, ['BFIELD'])
@@ -691,9 +695,12 @@ def download_and_process_data(shock_datetime, SC_ID, filter_options):
         add_dataframe['By'] = add_dataframe['By'].mask(condition)
         add_dataframe['Bz'] = add_dataframe['Bz'].mask(condition)
 
-##------------------------------------------------------------------------------
-## Median filter for data spikes
-##------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Median filter for data spikes
+# ----------------------------------------------------------------------
+
+    if isinstance(filter_options, int):
+        filter_options = [filter_options]
 
     # If filter option was chosen:
     if filter_options[0] != 0:

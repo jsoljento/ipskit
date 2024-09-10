@@ -730,7 +730,10 @@ with open(shock_times_fname, 'r') as file1:
         elif i == 8:
             comment33 = line.strip()
         elif i == 9:
-            filter_line = line.strip()
+            if len(line.strip()) == 1:
+                filter_line = int(line.strip())
+            else:
+                filter_line = line.strip()
         elif i == 10:
             comment4 = line.strip()
 
