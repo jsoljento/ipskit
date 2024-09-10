@@ -1,22 +1,23 @@
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # The Shock Analysis Toolkit (IPSKIT) enables the user to analyse fast
-# interplanetary shock waves detected in spacecraft data. The toolkit provides
-# all the necessary automatised parts for the analysis. It produces an output
-# data file as well as PS and PNG plots of the analysed shocks. The toolkit is
-# used to update the Database of Heliospheric Shocks Waves (IPShocks;
-# https://ipshocks.helsinki.fi) maintained at the University of Helsinki. The
-# running of the shock analysis program is explained in the associated
-# documentation file, while the basics of the analysis methods used by the
-# toolkit are described at https://ipshocks.helsinki.fi/documentation.
+# interplanetary shock waves detected in spacecraft data. The toolkit
+# provides all the necessary automatised parts for the analysis. It
+# produces an output data file as well as PS and PNG plots of the
+# analysed shocks. The toolkit is used to update the Database of
+# Heliospheric Shocks Waves (IPShocks; https://ipshocks.helsinki.fi)
+# maintained at the University of Helsinki. The running of the shock
+# analysis program is explained in the associated documentation file,
+# while the basics of the analysis methods used by the toolkit are
+# described at https://ipshocks.helsinki.fi/documentation.
 #
-# This toolkit was originally developed by Erkka Lumme in 2017 and it was
-# written in IDL. It was translated to Python by Timo Mäkelä in 2024. Further
-# edits have been made by Juska Soljento. During translation the Parker Solar
-# Probe (PSP) and Solar Orbiter (SolO) spacecraft were added, and the code was
-# simplified to better suit the current workflow where shocks are found using
-# the automated machine learning algortihm IPSVM
-# (https://bitbucket.org/raysofspace/ipsvm).
-# ------------------------------------------------------------------------------
+# This toolkit was originally developed by Erkka Lumme in 2017 and it
+# was written in IDL. It was translated to Python by Timo Mäkelä in
+# 2024. Further edits have been made by Juska Soljento. During
+# translation the Parker Solar Probe (PSP) and Solar Orbiter (SolO)
+# spacecraft were added, and the code was simplified to better suit the
+# current workflow where shocks are found using the automated machine
+# learning algortihm IPSVM (https://bitbucket.org/raysofspace/ipsvm).
+# ----------------------------------------------------------------------
 
 from datetime import datetime, timedelta
 import os
@@ -34,15 +35,15 @@ from download_and_process_data import download_and_process_data
 from error_analysis import error_analysis
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # FUNCTIONS AND PROCEDURES REQUIRED BY THE SHOCK ANALYSIS PROGRAM
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 def analysis_interval_check(t_up, t_down, var_names, df):
     """Check that there is enough data to proceed with the analysis.
 
-    This function checks that there are at least three data points in both the
-    upstream and downstream intervals of the dataframe.
+    This function checks that there are at least three data points in
+    both the upstream and downstream intervals of the dataframe.
 
     Parameters
     ----------
@@ -58,8 +59,8 @@ def analysis_interval_check(t_up, t_down, var_names, df):
     Returns
     -------
     too_few_datapoints : bool
-        If True, there are less than three data points, if False, there are at
-        least three data points.
+        If True, there are less than three data points, if False, there
+        are at least three data points.
     """
 
     # Initialize the returned Boolean.
@@ -77,8 +78,8 @@ def analysis_interval_check(t_up, t_down, var_names, df):
         points_up = data_up.notna().sum()
         points_down = data_down.notna().sum()
 
-        # Return True if either the upstream or the downstream contain less
-        # than three data points.
+        # Return True if either the upstream or the downstream contain
+        # less than three data points.
         if points_up < 3 or points_down < 3:
             too_few_datapoints = True
             break
@@ -87,7 +88,7 @@ def analysis_interval_check(t_up, t_down, var_names, df):
 
 
 def return_resolution(var_name, SC, Helios_flag):
-    """Return the resolution of a given data product for a given spacecraft.
+    """Return the data resolution for a given spacecraft.
 
     Parameters
     ----------
@@ -96,8 +97,8 @@ def return_resolution(var_name, SC, Helios_flag):
     SC : int
         The spacecraft ID number.
     Helios_flag : int
-        Helios data flag, 0 for 6 sec magnetic field data and 1 for 40.5 sec
-        magnetic field data.
+        Helios data flag, 0 for 6 sec magnetic field data and 1 for
+        40.5 sec magnetic field data.
 
     Returns
     -------
@@ -152,10 +153,11 @@ def return_resolution(var_name, SC, Helios_flag):
 
 
 def mean_data(var_names, interval, df):
-    """Calculate the mean and standard deviation of a given data product.
+    """Calculate the mean and standard deviation of a data product.
 
-    This function calculates the mean and standard deviation for the given
-    variables over a given time interval and returns them as dictionaries.
+    This function calculates the mean and standard deviation for the
+    given variables over a given time interval and returns them as
+    dictionaries.
 
     Parameters
     ----------
@@ -164,8 +166,8 @@ def mean_data(var_names, interval, df):
     interval : array_like
         Start and end of the time interval.
     df : pandas.DataFrame
-        DataFrame containing the data for which the mean and standard deviation
-        are calculated.
+        DataFrame containing the data for which the mean and standard
+        deviation are calculated.
 
     Returns
     -------
@@ -197,12 +199,12 @@ def mean_data(var_names, interval, df):
 
 
 def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
-    """Calculate the mean resolution of the given data over a time interval.
+    """Calculate the mean data resolution over a time interval.
 
-    This function calculates the mean data resolution for the given variables
-    over a given time interval and returns the resulting maximum resolution.
-    If there is insufficient data to perform the calculation, the function
-    returns False.
+    This function calculates the mean data resolution for the given
+    variables over a given time interval and returns the resulting
+    maximum resolution. If there is insufficient data to perform the
+    calculation, the function returns False.
 
     Parameters
     ----------
@@ -215,8 +217,8 @@ def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
     SC : int
         The spacecraft ID number.
     Helios_flag : int
-        Helios data flag, 0 for 6 sec magnetic field data and 1 for 40.5 sec
-        magnetic field data.
+        Helios data flag, 0 for 6 sec magnetic field data and 1 for
+        40.5 sec magnetic field data.
     df : pandas.DataFrame
         DataFrame containing the data for which the mean resolution is
         calculated.
@@ -224,8 +226,8 @@ def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
     Returns
     -------
     avg_res_max : float or bool
-        Mean data resolution as a float. Returns False if there is insufficient
-        data to perform the calculation.
+        Mean data resolution as a float. Returns False if there is
+        insufficient data to perform the calculation.
     """
 
     interval_start = min(t_up[0], t_up[1], t_down[0], t_down[1])
@@ -272,17 +274,18 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     t_original : array_like
         Time coordinates of the original data.
     t_lower_res : array_like
-        Lower resolution array of times. The data is resampled to match this
-        resolution.
+        Lower resolution array of times. The data is resampled to match
+        this resolution.
     interval : array_like
         Interval over which resampling is performed.
     SC : int
         Spacecraft ID number.
     bin_rad : array_like
         A radius around each data point. For example ACE's plasma data
-        resolution is 64 s, which defines a bin radius of 32 s on either side
-        of each data point. Wind has non-constant plasma data resolution so
-        this will be an array, for the other spacecraft this is a float.
+        resolution is 64 s, which defines a bin radius of 32 s on either
+        side of each data point. Wind has non-constant plasma data
+        resolution so this will be an array, for the other spacecraft
+        this is a float.
 
     Returns
     -------
@@ -290,22 +293,23 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
         Array of resampled data.
     """
 
-    # Count the number of time ticks in the lower resolution series within
-    # the interval.
+    # Count the number of time ticks in the lower resolution series
+    # within the interval.
     interval_mask = np.where(
         (t_lower_res >= interval[0]) & (t_lower_res <= interval[1]))[0]
     interval_times = t_lower_res[interval_mask]
     n_interval_ticks = len(interval_times)
 
-    # Determine the minimum resolution over all the considered plasma data
-    # points.
+    # Determine the minimum resolution over all the considered plasma
+    # data points.
     ind_pla = np.concatenate(
         ([interval_mask[0] - 1], interval_mask, [interval_mask[-1] + 1]))
     diffs = np.abs(np.diff(t_lower_res[ind_pla]))
     min_res = np.min(diffs[1:-1])
 
-    # For Wind there may be a different radius for each plasma data point,
-    # i.e., the plasma data resolution is not necessarily constant.
+    # For Wind there may be a different radius for each plasma data
+    # point, i.e., the plasma data resolution is not necessarily
+    # constant.
     if SC == 1:
         bin_rad_up = bin_rad[interval_mask]
     else:
@@ -342,7 +346,8 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
 
     # Loop through the bins and average the data.
     for j in range(n_interval_ticks):
-        # Find indices of t_original which are within the current bin range.
+        # Find indices of t_original which are within the current bin
+        # range.
         indices = np.where(
             (t_original > t_bins[j, 0]) & (t_original <= t_bins[j, 1]))[0]
 
@@ -364,8 +369,8 @@ def solve_normal_eq(vec_1, vec_2):
     """Solve the normal equation to find the shock normal.
 
     This function takes two vectors (which are different combinations of
-    the magnetic field and plasma velocity on either side of the shock), and
-    uses scipy.optimize.fsolve to determine the shock normal vector.
+    the magnetic field and plasma velocity on either side of the shock),
+    and uses scipy.optimize.fsolve to determine the shock normal vector.
 
     Parameters
     ----------
@@ -398,10 +403,10 @@ def normal_equation(N):
     """The set of equations used in finding the shock normal vector.
 
     This function defines three equations that are used to determine the
-    shock normal vector. The first two correspond to dot products between
-    the input vector and two other vectors (these are given as inputs to
-    solve_normal_eq), and the third one is required to make sure that the
-    solution is a unit vector.
+    shock normal vector. The first two correspond to dot products
+    between the input vector and two other vectors (these are given as
+    inputs to solve_normal_eq), and the third one is required to make
+    sure that the solution is a unit vector.
 
     Parameters
     ----------
@@ -431,10 +436,10 @@ def normal_equation(N):
 def normal_sign(normal, shock_type, V_vector_up):
     r"""Determine the sign, i.e., the direction, of the shock normal.
 
-    This functions determines the sign of the shock normal vector such that
-    :math:`V_{\mathrm{up}}\cdot\hat{n} \geq 0` for a fast-forward (FF) shock
-    and :math:`V_{\mathrm{up}}\cdot\hat{n} \leq 0` for a fast-reverse (FR)
-    shock.
+    This functions determines the sign of the shock normal vector such
+    that :math:`V_{\mathrm{up}}\cdot\hat{n} \geq 0` for a fast-forward
+    (FF) shock and :math:`V_{\mathrm{up}}\cdot\hat{n} \leq 0` for a
+    fast-reverse (FR) shock.
 
     Parameters
     ----------
@@ -466,9 +471,9 @@ def shock_normal(
     """Calculate the shock normal vector.
 
     This function first calculates the shock normal using one of three
-    available methods and then determines the correct sign for the normal.
-    The function raises an error if the shock normal cannot be determined
-    successfully.
+    available methods and then determines the correct sign for the
+    normal. The function raises an error if the shock normal cannot be
+    determined successfully.
 
     Parameters
     ----------
@@ -536,27 +541,26 @@ def shock_normal(
     return normal
 
 
-# Initialize a global variable to store the reference to the vertical line
-# in the plotting windows.
+# Initialize a global variable to store the reference to the vertical
+# line in the plotting windows.
 last_vline = []
 unclear = False
 
 
-# Define a function to handle key press events
 def on_key(event):
-    """Function to handle key press events when evaluating the shock plot.
+    """Function to handle key press events when evaluating a shock plot.
 
-    During the analysis run a shock plot is displayed. During this the user
-    can fine tune the shock time as well as mark the shock down as an unclear
-    shock. This function enables the user to do these tasks using the arrow
-    keys.
+    During the analysis run a shock plot is displayed. During this the
+    user can fine tune the shock time as well as mark the shock down as
+    an unclear shock. This function enables the user to do these tasks
+    using the arrow keys.
 
     Parameters
     ----------
     event : KeyEvent
-        Key press event, left or right to shift the shock time one second back
-        or forward, respectively, down to save the current shock time, and
-        up to mark the event as unclear.
+        Key press event, left or right to shift the shock time one
+        second back or forward, respectively, down to save the current
+        shock time, and up to mark the event as unclear.
     """
 
     global last_vline, last_click_time, time_adjusted, unclear
@@ -650,45 +654,46 @@ def on_key(event):
         fig.canvas.draw()
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # MAIN PROGRAM
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Advanced settings (see documentation before changing these)
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 # Shock time data file.
 shock_times_fname = 'shocks.dat'
 
-# If shock times are preliminary, better estimates are saved here.
+# Shock time output file. If the shock times are preliminary, better
+# estimates are saved here.
 shock_times_out_fname = 'shocks_out.dat'
 
 # Output file of the analysis results.
 analysis_output_fname = 'shock_parameters.dat'
 
-# The default and an alternative method for determining the shock normal.
-# The method IDs are: 0 = MX3, 1 = MFC, 2 = MX1 + MX2 average,
+# The default and an alternative method for determining the shock
+# normal. The method IDs are: 0 = MX3, 1 = MFC, 2 = MX1 + MX2 average,
 # 3 = MVA (not implemented).
 orig_normal_method_ID = 0
 additional_normal_method_ID = 1
 
-# Directory for saving the shock plots and the CSV file where the final results
-# for clear shocks are saved to.
+# Directory for saving the shock plots and the CSV file where the final
+# results for clear shocks are saved to.
 plot_directory = 'clear_shock_plots'
 csv_file = 'clear_shock_parameters.csv'
 
-# Directory for saving the unclear shock plots and the CSV file where the final
-# results for unclear shocks are saved to.
+# Directory for saving the unclear shock plots and the CSV file where
+# the final results for unclear shocks are saved to.
 unclear_plot_directory = 'unclear_shock_plots'
 unclear_csv_file = 'unclear_shock_parameters.csv'
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Reading the input file
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-with open(shock_times_fname, 'r') as file:
-    lines = file.readlines()
+with open(shock_times_fname, 'r') as file1:
+    lines = file1.readlines()
     N_sh = len(lines) - 11  # The number of shock events
 
     # Initialize the header options.
@@ -704,7 +709,7 @@ with open(shock_times_fname, 'r') as file:
     filter_line = 0
     comment4 = ''
 
-  # Read the values for the header options from the opened input file.
+    # Read the values for the header options from the opened input file.
     for i, line in enumerate(lines):
         if i == 0:
             comment11 = line.strip()
@@ -732,7 +737,6 @@ with open(shock_times_fname, 'r') as file:
     # Check which filter option was chosen.
     if filter_line == 0:  # No filtering
         filter_options = 0
-
     elif filter_line == 1:  # Default filter
         filter_options = 1
     else:  # User-defined four value filter
@@ -741,23 +745,26 @@ with open(shock_times_fname, 'r') as file:
     # Initialize lists where the candidate shock times will be stored.
     data = [[], [], [], [], [], []]  # Raw string data from the file
     shock_datetimes = []  # Datetime objects
-    shock_formatted_times = []  # e.g., 2001-01-01/02:01
+    shock_formatted_times = []  # Times as formatted strings
     t_shock = []  # Seconds since January 1, 1970 (Unix epoch)
 
     # Read the shock times from input text file.
     for i in range(11, len(lines)):
         line = lines[i]
         year, month, day, hour, minute, second = line.split()
+
         data[0].append(year)
         data[1].append(month)
         data[2].append(day)
         data[3].append(hour)
         data[4].append(minute)
         data[5].append(second)
+
         datetime_format = datetime(
             int(year), int(month), int(day),
             int(hour), int(minute), int(second))
         shock_datetimes.append(datetime_format)
+
         shock_formatted_times.append(
             datetime_format.strftime('%Y-%m-%d/%H:%M'))
 
@@ -765,25 +772,25 @@ with open(shock_times_fname, 'r') as file:
     t_shock = [
         (dt - datetime(1970, 1, 1)).total_seconds() for dt in shock_datetimes]
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Initializing the output of the analysis
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-# Initialize the output file.
-with open(shock_times_out_fname, 'w') as file1:
-    file1.write(comment11 + '\n')
-    file1.write(f'{"": >15}' + comment12 + '\n')
-    file1.write(f'{"": >15}' + comment13 + '\n')
-    file1.write(f'{SC_ID:2d}\n')
-    file1.write(comment2 + '\n')
-    file1.write(f'{plot_events:d}\n')
-    file1.write(comment31 + '\n')
-    file1.write(comment32 + '\n')
-    file1.write(comment33 + '\n')
-    file1.write(filter_line + '\n')
-    file1.write(comment4 + '\n')
+# Initialize the shock time output file.
+with open(shock_times_out_fname, 'w') as file2:
+    file2.write(comment11 + '\n')
+    file2.write(f'{"": >15}' + comment12 + '\n')
+    file2.write(f'{"": >15}' + comment13 + '\n')
+    file2.write(str(SC_ID) + '\n')
+    file2.write(comment2 + '\n')
+    file2.write(str(plot_events) + '\n')
+    file2.write(comment31 + '\n')
+    file2.write(comment32 + '\n')
+    file2.write(comment33 + '\n')
+    file2.write(str(filter_line) + '\n')
+    file2.write(comment4 + '\n')
 
-# Initialize the analysis parameter file and write the header to the file.
+# Initialize the shock parameter file and write the header to it.
 header = (
     "Year Month   Day  Hour   Min   Sec   Type       "
     "Position                         B_up                    "
@@ -809,10 +816,10 @@ header = (
     "Mag data res "
     "Pla data res")
 
-with open(analysis_output_fname, 'w') as file2:
-    file2.write(header + '\n')
+with open(analysis_output_fname, 'w') as file3:
+    file3.write(header + '\n')
 
-# Initialize csv file first header line
+# Initialize the CSV file's header line.
 header_line_csv = (
     "year,month,day,hour,minute,second,type,"
     "spacecraft_x,spacecraft_y,spacecraft_z,"
@@ -857,19 +864,20 @@ header_line_csv = (
     "plasma_resolution"
 )
 
-# Write the header to both unclear and clear csv files.
+# Write the header to the CSV files for both the clear and unclear
+# shocks.
 with open(csv_file, 'w') as file3:
     file3.write(header_line_csv + '\n')
 
 with open(unclear_csv_file, 'w') as file4:
     file4.write(header_line_csv + '\n')
 
-# Initializing a list for events with insufficient data
+# Initialize a list for events with insufficient data.
 bad_events = []
 
-# ------------------------------------------------------------------------------
-# Loop through all the shock candidate times:
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Looping through all the shock candidate times
+# ----------------------------------------------------------------------
 
 for i in range(0, N_sh):
 
@@ -880,22 +888,23 @@ for i in range(0, N_sh):
     time_adjusted = False
     unclear = False
 
-    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Downloading and processing data for the analysis
-    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     mag_dataframe, pla_dataframe, SC_pos, output_add, t_shock_new, pla_bin_rads = download_and_process_data(
         shock_datetimes[i], SC_ID, filter_options)
 
-    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Updating the shock time
-    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     t_shock[i] = t_shock_new
 
-    # ------------------------------------------------------------------------------
-    # Determining the shock type (FF or FR) and upstream and downstream mean values
-    # ------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Determine the shock type (FF or FR) as well as the upstream and
+    # downstream mean values.
+    # ------------------------------------------------------------------
 
     mag_vars = ['B', 'Bx', 'By', 'Bz']
     pla_vars = ['Np', 'Tp', 'V', 'Vx', 'Vy', 'Vz']
