@@ -63,23 +63,23 @@ def analysis_interval_check(t_up, t_down, var_names, df):
         are at least three data points.
     """
 
-    # Initialize the returned Boolean.
+    # Initialize the returned Boolean
     too_few_datapoints = False
 
-    # Loop through the given variables.
+    # Loop through the given variables
     for var in var_names:
-        # Choose the data in the upstream and downstream intervals.
+        # Choose the data in the upstream and downstream intervals
         data_up = df[
             (df['EPOCH'] >= t_up[0]) & (df['EPOCH'] <= t_up[1])][var]
         data_down = df[
             (df['EPOCH'] >= t_down[0]) & (df['EPOCH'] <= t_down[1])][var]
 
-        # Count the datapoints in the intervals.
+        # Count the datapoints in the intervals
         points_up = data_up.notna().sum()
         points_down = data_down.notna().sum()
 
         # Return True if either the upstream or the downstream contain
-        # less than three data points.
+        # less than three data points
         if points_up < 3 or points_down < 3:
             too_few_datapoints = True
             break
@@ -146,7 +146,7 @@ def return_resolution(var_name, SC, Helios_flag):
         mag_res = 0.126
         pla_res = 4.0
 
-    # Return the resolution corresponding to the input variable.
+    # Return the resolution corresponding to the input variable
     res = mag_res if var_name.startswith('B') else pla_res
 
     return res
@@ -188,7 +188,7 @@ def mean_data(var_names, interval, df):
             mean_vals[var] = data_interval.mean(skipna=True)
             std_vals[var] = data_interval.std(skipna=True)
 
-            # If standard deviation is not finite, set it to 0.
+            # If standard deviation is not finite, set it to 0
             if not np.isfinite(std_vals[var]):
                 std_vals[var] = 0
         else:
@@ -241,7 +241,7 @@ def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
                 & (df['EPOCH'] <= interval_end)
                 & df[var].notna()][var]
 
-            # Count non-null values after applying the mask.
+            # Count non-null values after applying the mask
             gd_points = data_interval.count()
 
             if gd_points == 0:
@@ -279,7 +279,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     interval : array_like
         Interval over which resampling is performed.
     SC : int
-        Spacecraft ID number.
+        Spacecraft ID number. See documentation for details.
     bin_rad : array_like
         A radius around each data point. For example ACE's plasma data
         resolution is 64 s, which defines a bin radius of 32 s on either
@@ -294,14 +294,14 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     """
 
     # Count the number of time ticks in the lower resolution series
-    # within the interval.
+    # within the interval
     interval_mask = np.where(
         (t_lower_res >= interval[0]) & (t_lower_res <= interval[1]))[0]
     interval_times = t_lower_res[interval_mask]
     n_interval_ticks = len(interval_times)
 
     # Determine the minimum resolution over all the considered plasma
-    # data points.
+    # data points
     ind_pla = np.concatenate(
         ([interval_mask[0] - 1], interval_mask, [interval_mask[-1] + 1]))
     diffs = np.abs(np.diff(t_lower_res[ind_pla]))
@@ -309,13 +309,13 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
 
     # For Wind there may be a different radius for each plasma data
     # point, i.e., the plasma data resolution is not necessarily
-    # constant.
+    # constant
     if SC == 1:
         bin_rad_up = bin_rad[interval_mask]
     else:
         bin_rad_up = 0
 
-    # Determine the measurement bin radii.
+    # Determine the measurement bin radii
     t_bins = np.zeros((n_interval_ticks, 2))
     if bin_rad is not None:
         for i in range(n_interval_ticks):
@@ -329,7 +329,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
             if rad > (local_min_res / 2):
                 rad = local_min_res / 2
 
-            # Special case for the Voyager spacecraft.
+            # Special case for the Voyager spacecraft
             if SC in [11, 12] and (local_min_res / 2) > rad:
                 rad = local_min_res / 2
 
@@ -341,27 +341,27 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
                 [[time - min_res / 2, time + min_res / 2]
                  for time in interval_times])
 
-    # Initialize an array where the averaged values will be added.
+    # Initialize an array where the averaged values will be added
     resampled_data = np.zeros(n_interval_ticks)
 
-    # Loop through the bins and average the data.
+    # Loop through the bins and average the data
     for j in range(n_interval_ticks):
         # Find indices of t_original which are within the current bin
-        # range.
+        # range
         indices = np.where(
             (t_original > t_bins[j, 0]) & (t_original <= t_bins[j, 1]))[0]
 
         if len(indices) > 0:
-            # Average values in var_data corresponding to these indices.
+            # Average values in var_data corresponding to these indices
             resampled_data[j] = np.nanmean(var_data[indices])
         else:
-            # If no indices fall within the bin, assign NaN.
+            # If no indices fall within the bin, assign NaN
             resampled_data[j] = np.nan
 
     return resampled_data
 
 
-# Global variables to mimic IDL's COMMON block.
+# Global variables to mimic IDL's COMMON block
 normal_eq_input = {}
 
 
@@ -418,6 +418,7 @@ def normal_equation(N):
     eqns : list
         Three constraining equations in a list.
     """
+
     global normal_eq_input
     A = normal_eq_input['A']
     B = normal_eq_input['B']
@@ -542,7 +543,7 @@ def shock_normal(
 
 
 # Initialize a global variable to store the reference to the vertical
-# line in the plotting windows.
+# line in the plotting windows
 last_vline = []
 unclear = False
 
@@ -575,19 +576,19 @@ def on_key(event):
         if last_click_time:
             new_time = last_click_time + timedelta(seconds=1)
 
-            # Remove previous vertical lines.
+            # Remove previous vertical lines
             if last_vline:
                 for line in last_vline:
                     line.remove()
                 last_vline = []
 
-            # Draw a new vertical line at the updated time.
+            # Draw a new vertical line at the updated time
             last_vline = []
             for ax in axs:
                 vline = ax.axvline(new_time, **line_kwargs)
                 last_vline.append(vline)
 
-            # Update the last click time.
+            # Update the last click time
             last_click_time = new_time
 
             fig.canvas.draw()
@@ -595,19 +596,19 @@ def on_key(event):
         if last_click_time:
             new_time = last_click_time - timedelta(seconds=1)
 
-            # Remove previous vertical lines.
+            # Remove previous vertical lines
             if last_vline:
                 for line in last_vline:
                     line.remove()
                 last_vline = []
             
-            # Draw a new vertical line at the updated time.
+            # Draw a new vertical line at the updated time
             last_vline = []
             for ax in axs:
                 vline = ax.axvline(new_time, **line_kwargs)
                 last_vline.append(vline)
 
-            # Update last click time
+            # Update the last click time
             last_click_time = new_time
 
             fig.canvas.draw()
@@ -620,13 +621,13 @@ def on_key(event):
             with open(shock_times_out_fname, 'a') as f:
                 f.write(formatted_final_time + '\n')
 
-            # Remove the previous vertical line if it exists.
+            # Remove the previous vertical line if it exists
             if last_vline:
                 for line in last_vline:
                     line.remove()
                 last_vline = []
 
-            # Draw a new vertical line starting from the shock time.
+            # Draw a new vertical line starting from the shock time
             last_vline = []
             for ax in axs:
                 vline = ax.axvline(
@@ -636,7 +637,7 @@ def on_key(event):
 
             text_to_print = f"Time saved:\n{formatted_final_time}"
             
-            # Add a new annotation above the title in the top subplot.
+            # Add a new annotation above the title in the top subplot
             axs[0].annotate(
                 text_to_print, xy=(0.5, 1.3), xycoords='axes fraction',
                 ha='center', va='center', fontsize=12)
@@ -646,7 +647,7 @@ def on_key(event):
         unclear = True
         text_to_print = "Event marked as unclear"
             
-        # Add a new annotation above the title in the top subplot.
+        # Add a new annotation above the title in the top subplot
         axs[0].annotate(
             text_to_print, xy=(0.5, 1.3), xycoords='axes fraction',
             ha='center', va='center', fontsize=12)
@@ -662,29 +663,29 @@ def on_key(event):
 # Advanced settings (see documentation before changing these)
 # ----------------------------------------------------------------------
 
-# Shock time data file.
+# Shock time data file
 shock_times_fname = 'shocks.dat'
 
 # Shock time output file. If the shock times are preliminary, better
-# estimates are saved here.
+# estimates are saved here
 shock_times_out_fname = 'shocks_out.dat'
 
-# Output file of the analysis results.
+# Output file of the analysis results
 analysis_output_fname = 'shock_parameters.dat'
 
 # The default and an alternative method for determining the shock
 # normal. The method IDs are: 0 = MX3, 1 = MFC, 2 = MX1 + MX2 average,
-# 3 = MVA (not implemented).
+# 3 = MVA (not implemented)
 orig_normal_method_ID = 0
 additional_normal_method_ID = 1
 
 # Directory for saving the shock plots and the CSV file where the final
-# results for clear shocks are saved to.
+# results for clear shocks are saved to
 plot_directory = 'clear_shock_plots'
 csv_file = 'clear_shock_parameters.csv'
 
 # Directory for saving the unclear shock plots and the CSV file where
-# the final results for unclear shocks are saved to.
+# the final results for unclear shocks are saved to
 unclear_plot_directory = 'unclear_shock_plots'
 unclear_csv_file = 'unclear_shock_parameters.csv'
 
@@ -696,7 +697,7 @@ with open(shock_times_fname, 'r') as file1:
     lines = file1.readlines()
     N_sh = len(lines) - 11  # The number of shock events
 
-    # Initialize the header options.
+    # Initialize the header options
     comment11 = ''
     comment12 = ''
     comment13 = ''
@@ -709,7 +710,7 @@ with open(shock_times_fname, 'r') as file1:
     filter_line = 0
     comment4 = ''
 
-    # Read the values for the header options from the opened input file.
+    # Read the values for the header options from the opened input file
     for i, line in enumerate(lines):
         if i == 0:
             comment11 = line.strip()
@@ -737,7 +738,7 @@ with open(shock_times_fname, 'r') as file1:
         elif i == 10:
             comment4 = line.strip()
 
-    # Check which filter option was chosen.
+    # Check which filter option was chosen
     if filter_line == 0:  # No filtering
         filter_options = 0
     elif filter_line == 1:  # Default filter
@@ -745,13 +746,13 @@ with open(shock_times_fname, 'r') as file1:
     else:  # User-defined four value filter
         filter_options = list(map(float, filter_line.split(',')))
 
-    # Initialize lists where the candidate shock times will be stored.
+    # Initialize lists where the candidate shock times will be stored
     data = [[], [], [], [], [], []]  # Raw string data from the file
     shock_datetimes = []  # Datetime objects
     shock_formatted_times = []  # Times as formatted strings
     t_shock = []  # Seconds since January 1, 1970 (Unix epoch)
 
-    # Read the shock times from input text file.
+    # Read the shock times from input text file
     for i in range(11, len(lines)):
         line = lines[i]
         year, month, day, hour, minute, second = line.split()
@@ -771,7 +772,7 @@ with open(shock_times_fname, 'r') as file1:
         shock_formatted_times.append(
             datetime_format.strftime('%Y-%m-%d/%H:%M'))
 
-    # Change the time format to seconds since January 1, 1970.
+    # Change the time format to seconds since January 1, 1970
     t_shock = [
         (dt - datetime(1970, 1, 1)).total_seconds() for dt in shock_datetimes]
 
@@ -779,7 +780,7 @@ with open(shock_times_fname, 'r') as file1:
 # Initializing the output of the analysis
 # ----------------------------------------------------------------------
 
-# Initialize the shock time output file.
+# Initialize the shock time output file
 with open(shock_times_out_fname, 'w') as file2:
     file2.write(comment11 + '\n')
     file2.write(f'{"": >15}' + comment12 + '\n')
@@ -793,7 +794,7 @@ with open(shock_times_out_fname, 'w') as file2:
     file2.write(str(filter_line) + '\n')
     file2.write(comment4 + '\n')
 
-# Initialize the shock parameter file and write the header to it.
+# Initialize the shock parameter file and write the header to it
 header = (
     "Year Month   Day  Hour   Min   Sec   Type       "
     "Position                         B_up                    "
@@ -822,7 +823,7 @@ header = (
 with open(analysis_output_fname, 'w') as file3:
     file3.write(header + '\n')
 
-# Initialize the CSV file's header line.
+# Initialize the CSV file's header line
 header_line_csv = (
     "year,month,day,hour,minute,second,type,"
     "spacecraft_x,spacecraft_y,spacecraft_z,"
@@ -868,14 +869,14 @@ header_line_csv = (
 )
 
 # Write the header to the CSV files for both the clear and unclear
-# shocks.
+# shocks
 with open(csv_file, 'w') as file3:
     file3.write(header_line_csv + '\n')
 
 with open(unclear_csv_file, 'w') as file4:
     file4.write(header_line_csv + '\n')
 
-# Initialize a list for events with insufficient data.
+# Initialize a list for events with insufficient data
 bad_events = []
 
 # ----------------------------------------------------------------------
