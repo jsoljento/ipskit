@@ -32,7 +32,7 @@ def thermal_speed_to_temperature(V_th):
     m_p = constants.m_p
 
     # V_th is multiplied by 1e3 to convert from km/s to m/s.
-    T_p = m_p/(2*k_B)*(1e3*V_th)**2
+    T_p = m_p / (2 * k_B) * (1e3 * V_th)**2
 
     return T_p
 
@@ -70,7 +70,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     output_add : list
         Additional Helios output.
     t_shock_new : int
-        Shock time as seconds since January 1, 1970 (Unix epoch).
+        Shock time as seconds since January 1, 1970 (Unix time).
     pla_bin_rads : array_like
         Plasma data bin radii. Only returned for the Wind spacecraft.
     """
@@ -80,11 +80,40 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     t_end = shock_datetime + timedelta(hours=1)
 
     # Convert the shock time from datetime to seconds after January 1,
-    # 1970 (Unix epoch)
+    # 1970 (Unix time)
     shock_epoch = int(shock_datetime.timestamp())
 
+    # Create empty arrays for the different data products; these will
+    # be replaced by the full arrays when the data is downloaded.
+    t_mag = np.array([])
+    Bx = np.array([])
+    By = np.array([])
+    Bz = np.array([])
+    B = np.array([])
+
+    t_mag_add = np.array([])
+    Bx_add = np.array([])
+    By_add = np.array([])
+    Bz_add = np.array([])
+    B_add = np.array([])
+
+    t_pla = np.array([])
+    Vx = np.array([])
+    Vy = np.array([])
+    Vz = np.array([])
+    V = np.array([])
+    Np = np.array([])
+    Tp = np.array([])
+    status = np.array([])
+
+    t_pos = np.array([])
+    pos_X = np.array([])
+    pos_Y = np.array([])
+    pos_Z = np.array([])
+
     # ------------------------------------------------------------------
-    # Download and preprocess the data (e.g., convert to correct units)
+    # Downloading and preprocessing the data (e.g., converting to
+    # correct units)
     # ------------------------------------------------------------------
 
     if SC == 0:  # ACE
@@ -228,6 +257,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
                 ['B', 'BXSSE', 'BYSSE', 'BZSSE'])
             HELIOS_no_mag = 0
         except cdas.NoDataError:
+            mag = {}
             HELIOS_no_mag = 1
         pla = cdas.get_data(
             'sp_phys', 'HELIOS1_40SEC_MAG-PLASMA', t_start, t_end,
@@ -249,11 +279,11 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
         # Additional magnetic field data from plasma datasets:
         # These will be used later if the primary mag data is faulty
-        t_mag_add1 = pla['EPOCH']
-        Bx_add1 = pla['B_R']
-        By_add1 = pla['B_T']
-        Bz_add1 = pla['B_N']
-        B_add1 = np.sqrt(Bx_add1**2 + By_add1**2 + Bz_add1**2)
+        t_mag_add = pla['EPOCH']
+        Bx_add = pla['B_R']
+        By_add = pla['B_T']
+        Bz_add = pla['B_N']
+        B_add = np.sqrt(Bx_add**2 + By_add**2 + Bz_add**2)
 
         if HELIOS_no_mag == 0:
             t_mag = mag['EPOCH']
@@ -262,11 +292,11 @@ def download_and_process_data(shock_datetime, SC, filter_options):
             Bz = mag['BZ_(SSE)']
             B = mag['B']
         else:
-            t_mag = t_mag_add1
-            Bx = Bx_add1
-            By = By_add1
-            Bz = Bz_add1
-            B = B_add1
+            t_mag = t_mag_add
+            Bx = Bx_add
+            By = By_add
+            Bz = Bz_add
+            B = B_add
 
         # Position data
         t_pos = pos['EPOCH']
@@ -280,6 +310,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
                 ['B', 'BXSSE', 'BYSSE', 'BZSSE'])
             HELIOS_no_mag = 0
         except cdas.NoDataError:
+            mag = {}
             HELIOS_no_mag = 1
         pla = cdas.get_data(
             'sp_phys', 'HELIOS2_40SEC_MAG-PLASMA', t_start, t_end,
@@ -301,11 +332,11 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
         # Additional magnetic field data from plasma datasets:
         # These will be used later if the primary mag data is faulty
-        t_mag_add1 = pla['EPOCH']
-        Bx_add1 = pla['B_R']
-        By_add1 = pla['B_T']
-        Bz_add1 = pla['B_N']
-        B_add1 = np.sqrt(Bx_add1**2 + By_add1**2 + Bz_add1**2)
+        t_mag_add = pla['EPOCH']
+        Bx_add = pla['B_R']
+        By_add = pla['B_T']
+        Bz_add = pla['B_N']
+        B_add = np.sqrt(Bx_add**2 + By_add**2 + Bz_add**2)
 
         if HELIOS_no_mag == 0:
             t_mag = mag['EPOCH']
@@ -314,11 +345,11 @@ def download_and_process_data(shock_datetime, SC, filter_options):
             Bz = mag['BZ_(SSE)']
             B = mag['B']
         else:
-            t_mag = t_mag_add1
-            Bx = Bx_add1
-            By = By_add1
-            Bz = Bz_add1
-            B = B_add1
+            t_mag = t_mag_add
+            Bx = Bx_add
+            By = By_add
+            Bz = Bz_add
+            B = B_add
 
         # Position data
         t_pos = pos['EPOCH']
@@ -356,7 +387,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         # temperature datasets
         Tmax = pla['T-LARGE']
         Tmin = pla['T-SMALL']
-        Tp = (Tmax + Tmin) / 2
+        Tp = (Tmax + Tmin)/2
 
         # Position data
         t_pos = pos['EPOCH']
@@ -384,7 +415,6 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         B = mag['B']
 
         # Plasma data
-        status = pla['STATUS[1]']  # This is used to check if the data was okay
         t_pla = pla['EPOCH']
         Vx = pla['VX_HIA_GSE']
         Vy = pla['VY_HIA_GSE']
@@ -393,6 +423,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         Np = pla['N(HIA)']
         Tp_par = pla['T(HIA)_PAR']
         Tp_perp = pla['T(HIA)_PERP']
+        status = pla['STATUS[1]']  # This is used to check if the data was okay
 
         # Total proton temperature assuming an isotropic velocity
         # distribution. The temperature is converted from MK to K
@@ -424,7 +455,6 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         B = mag['B']
 
         # Plasma data
-        status = pla['STATUS[1]']  # This is used to check if the data was okay
         t_pla = pla['EPOCH']
         Vx = pla['VX_HIA_GSE']
         Vy = pla['VY_HIA_GSE']
@@ -433,6 +463,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         Np = pla['N(HIA)']
         Tp_par = pla['T(HIA)_PAR']
         Tp_perp = pla['T(HIA)_PERP']
+        status = pla['STATUS[1]']  # This is used to check if the data was okay
 
         # Total proton temperature assuming an isotropic velocity
         # distribution. The temperature is converted from MK to K
@@ -464,7 +495,6 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         B = mag['B']
 
         # Plasma data
-        status = pla['STATUS[1]']  # This is used to check if the data was okay
         t_pla = pla['EPOCH']
         Vx = pla['VX_P_GSE']
         Vy = pla['VY_P_GSE']
@@ -473,6 +503,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         Np = pla['N(P)']
         Tp_par = pla['T(P)_PAR']
         Tp_perp = pla['T(P)_PERP']
+        status = pla['STATUS[1]']  # This is used to check if the data was okay
 
         # Total proton temperature assuming an isotropic velocity
         # distribution. The temperature is converted from MK to K
@@ -699,89 +730,101 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         pos_Y = pos['HGI_LAT']
         pos_Z = pos['HGI_LONG']
 
-    ##------------------------------------------------------------------------------
-    ## Create pandas dataframe of the dataproducts
-    ##------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Creating pandas DataFrames of the data products
+    # ------------------------------------------------------------------
+
+    # If the spacecraft is not one of the Cluster spacecraft, create
+    # a status array full of NaNs
     if SC not in [7, 8, 9]:
         status = np.full(len(t_pla), np.nan)
 
-    #Converting all time vectors from datetime format to UNIX epoch meaning seconds since 1st Jan 1970
+    # Convert all time vectors from datetime format to Unix time,
+    # i.e., seconds since January 1, 1970
     t_mag = [dt.timestamp() for dt in t_mag]
+    t_mag_add = [dt.timestamp() for dt in t_mag_add]
     t_pla = [dt.timestamp() for dt in t_pla]
     t_pos = [dt.timestamp() for dt in t_pos]
 
-    # Create dataframes
+    # Create DataFrames for magnetic field, plasma, and position data
     mag_dataframe = pd.DataFrame({
         'EPOCH': t_mag,
-        'B': B,
         'Bx': Bx,
         'By': By,
-        'Bz': Bz
-    })
-
+        'Bz': Bz,
+        'B': B})
     pla_dataframe = pd.DataFrame({
         'EPOCH': t_pla,
-        'Np': Np,
-        'V': V,
-        'Tp': Tp,
         'Vx': Vx,
         'Vy': Vy,
         'Vz': Vz,
-        'status': status
-    })
-
+        'V': V,
+        'Np': Np,
+        'Tp': Tp,
+        'status': status})
     pos_dataframe = pd.DataFrame({
         'EPOCH': t_pos,
         'pos_X': pos_X,
         'pos_Y': pos_Y,
-        'pos_Z': pos_Z
-    })
+        'pos_Z': pos_Z})
 
-    # Additional dataframe for helios
-    if SC == 4 or SC == 5:
+    # Additional DataFrame for Helios
+    if SC in [4, 5]:
         add_dataframe = pd.DataFrame({
-            'EPOCH': [t.timestamp() for t in t_mag_add1],
-            'B': B_add1,
-            'Bx': Bx_add1,
-            'By': By_add1,
-            'Bz': Bz_add1
-        })
+            'EPOCH': t_mag_add,
+            'Bx': Bx_add,
+            'By': By_add,
+            'Bz': Bz_add,
+            'B': B_add})
     else:
         add_dataframe = pd.DataFrame()
 
-    #------------------------------------------------------------------------------
-    # Cleaning the data (removing bad values)
-    #------------------------------------------------------------------------------
-
-    # Magnetic field magnitude data
-    mag_dataframe['B'] = mag_dataframe['B'].mask((mag_dataframe['B'] > 150) | (mag_dataframe['B'] <= 0))
+    # --------------------------------------------------------------------------
+    # Cleaning the data (i.e., removing bad values)
+    # --------------------------------------------------------------------------
 
     # Magnetic field components
-    mag_dataframe['Bx'] = mag_dataframe['Bx'].mask(np.abs(mag_dataframe['Bx']) > 1500)
-    mag_dataframe['By'] = mag_dataframe['By'].mask(np.abs(mag_dataframe['By']) > 1500)
-    mag_dataframe['Bz'] = mag_dataframe['Bz'].mask(np.abs(mag_dataframe['Bz']) > 1500)
+    mag_dataframe['Bx'] = mag_dataframe['Bx'].mask(
+        np.abs(mag_dataframe['Bx']) > 1500)
+    mag_dataframe['By'] = mag_dataframe['By'].mask(
+        np.abs(mag_dataframe['By']) > 1500)
+    mag_dataframe['Bz'] = mag_dataframe['Bz'].mask(
+        np.abs(mag_dataframe['Bz']) > 1500)
 
-    # Solar wind bulk speed
-    pla_dataframe['V'] = pla_dataframe['V'].mask((pla_dataframe['V'] > 1500) | (pla_dataframe['V'] < 0))
+    # Magnetic field magnitude
+    mag_dataframe['B'] = mag_dataframe['B'].mask(
+        (mag_dataframe['B'] > 150) | (mag_dataframe['B'] <= 0))
 
     # Solar wind velocity components
-    pla_dataframe['Vx'] = pla_dataframe['Vx'].mask(np.abs(pla_dataframe['Vx']) > 1500)
-    pla_dataframe['Vy'] = pla_dataframe['Vy'].mask(np.abs(pla_dataframe['Vy']) > 1500)
-    pla_dataframe['Vz'] = pla_dataframe['Vz'].mask(np.abs(pla_dataframe['Vz']) > 1500)
+    pla_dataframe['Vx'] = pla_dataframe['Vx'].mask(
+        np.abs(pla_dataframe['Vx']) > 1500)
+    pla_dataframe['Vy'] = pla_dataframe['Vy'].mask(
+        np.abs(pla_dataframe['Vy']) > 1500)
+    pla_dataframe['Vz'] = pla_dataframe['Vz'].mask(
+        np.abs(pla_dataframe['Vz']) > 1500)
 
-    # Density
-    pla_dataframe['Np'] = pla_dataframe['Np'].mask((pla_dataframe['Np'] > 150) | (pla_dataframe['Np'] < 0))
+    # Solar wind bulk speed
+    pla_dataframe['V'] = pla_dataframe['V'].mask(
+        (pla_dataframe['V'] > 1500) | (pla_dataframe['V'] < 0))
 
-    # Temperature
-    pla_dataframe['Tp'] = pla_dataframe['Tp'].mask((pla_dataframe['Tp'] > 0.9e7) | (pla_dataframe['Tp'] < 0))
+    # Plasma density
+    pla_dataframe['Np'] = pla_dataframe['Np'].mask(
+        (pla_dataframe['Np'] > 150) | (pla_dataframe['Np'] < 0))
 
-    # Position data
-    pos_dataframe['pos_X'] = pos_dataframe['pos_X'].mask(np.abs(pos_dataframe['pos_X']) > 1e9)
-    pos_dataframe['pos_Y'] = pos_dataframe['pos_Y'].mask(np.abs(pos_dataframe['pos_Y']) > 1e9)
-    pos_dataframe['pos_Z'] = pos_dataframe['pos_Z'].mask(np.abs(pos_dataframe['pos_Z']) > 1e9)
+    # Plasma temperature
+    pla_dataframe['Tp'] = pla_dataframe['Tp'].mask(
+        (pla_dataframe['Tp'] > 0.9e7) | (pla_dataframe['Tp'] < 0))
 
-    # Deleting values where the instrument status was wrong (5 or higher)
-    # This only applies for Cluster SC
+    # Position
+    pos_dataframe['pos_X'] = pos_dataframe['pos_X'].mask(
+        np.abs(pos_dataframe['pos_X']) > 1e9)
+    pos_dataframe['pos_Y'] = pos_dataframe['pos_Y'].mask(
+        np.abs(pos_dataframe['pos_Y']) > 1e9)
+    pos_dataframe['pos_Z'] = pos_dataframe['pos_Z'].mask(
+        np.abs(pos_dataframe['pos_Z']) > 1e9)
+
+    # For the Cluster plasma data, delete values where the instrument
+    # status was wrong (5 or higher)
     if SC in [7, 8, 9]:
         status = pla_dataframe['status']
         faulty_values = status > 5
@@ -793,61 +836,57 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         pla_dataframe['Tp'] = pla_dataframe['Tp'].mask(faulty_values)
         pla_dataframe = pla_dataframe.drop(columns=['status'])
 
-    # Cleaning the additional helios dataframe
-    if SC == 4 or SC == 5:
+    # Clean the additional Helios DataFrame
+    if SC in [4, 5]:
         condition = (add_dataframe['B'] > 150) | (add_dataframe['B'] <= 0)
         add_dataframe['B'] = add_dataframe['B'].mask(condition)
         add_dataframe['Bx'] = add_dataframe['Bx'].mask(condition)
         add_dataframe['By'] = add_dataframe['By'].mask(condition)
         add_dataframe['Bz'] = add_dataframe['Bz'].mask(condition)
 
-        condition = (add_dataframe['Bx'] > 1500) | (add_dataframe['By'] > 1500) | (add_dataframe['By'] > 1500)
+        condition = ((add_dataframe['Bx'] > 1500)
+                     | (add_dataframe['By'] > 1500)
+                     | (add_dataframe['By'] > 1500))
         add_dataframe['B'] = add_dataframe['B'].mask(condition)
         add_dataframe['Bx'] = add_dataframe['Bx'].mask(condition)
         add_dataframe['By'] = add_dataframe['By'].mask(condition)
         add_dataframe['Bz'] = add_dataframe['Bz'].mask(condition)
 
     # ----------------------------------------------------------------------
-    # Median filter for data spikes
+    # If filtering was chosen by the user, use the median filter to
+    # filter out data spikes
     # ----------------------------------------------------------------------
 
     if isinstance(filter_options, int):
         filter_options = [filter_options]
 
-    # If filter option was chosen:
     if filter_options[0] != 0:
-
-        # User-defined settings
-        if len(filter_options) == 4:
-            median_window_size = filter_options[0]
-            tols = filter_options[1:4]
-
-        # Default settings
-        elif filter_options[0] == 1:
+        if filter_options[0] == 1:  # Default settings
             median_window_size = 5
             tols = [0.75, 1.5, 0.2]
+        elif len(filter_options) == 4:  # User-defined settings
+            median_window_size = filter_options[0]
+            tols = filter_options[1:4]
+        else:  # Incorrect input
+            raise ValueError(
+                'Incorrect input for the spike filter. '
+                'Must be either 0, 1, or a 4-element float array')
 
-        # Incorrect input
-        else:
-            raise ValueError('Incorrect input for the spike filter. Must be either 0, 1, or 4-element float array')
-
-        # Taking a mean of Np, Tp and V dataseries and removing values that differ
+        # Taking a mean of the Np, Tp and V data series and removing values that differ
         # from the mean series too much. Allowed difference is set by the corresponding
         # multiplier in the tols array. Np = tols[1], Tp - tols[2] and V - tols[3]
-
-        for col_name in ['Np', 'Tp', 'V']:
-
-
-            pla_dataframe[col_name + '_median'] = pla_dataframe[col_name].rolling(window=int(median_window_size), center=True).median()
+        for var in ['Np', 'Tp', 'V']:
+            pla_dataframe[var + '_median'] = pla_dataframe[var].rolling(
+                window=int(median_window_size), center=True).median()
 
             # Calculate the absolute difference from the median
-            diff = np.abs(pla_dataframe[col_name] - pla_dataframe[col_name + '_median'])
+            diff = np.abs(pla_dataframe[var] - pla_dataframe[var + '_median'])
 
             # Calculate the tolerance limit based on the multiplier
-            tol_limit = tols[['Np', 'Tp', 'V'].index(col_name)] * pla_dataframe[col_name + '_median']
+            tol_limit = tols[['Np', 'Tp', 'V'].index(var)] * pla_dataframe[var + '_median']
 
             # Replace values exceeding the tolerance with NaN
-            pla_dataframe.loc[diff > tol_limit, col_name] = np.nan
+            pla_dataframe.loc[diff > tol_limit, var] = np.nan
 
         # Find indices where V contains NaN values
         missing_velocity = pla_dataframe['V'].isna()
@@ -856,12 +895,13 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         pla_dataframe.loc[missing_velocity, ['Vx', 'Vy', 'Vz']] = np.nan
 
 
-    ##------------------------------------------------------------------------------
-    ## If the given shock time is only preliminary, a better estimate is determined
-    ## using magnetic field data
-    ##------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # If the given shock time is only preliminary, a better estimate is
+    # determined using magnetic field data
+    # ------------------------------------------------------------------
 
-    # THIS FEATURE HAS BEEN TURNED OFF AS SHOCK TIME IS ADJUSTED WITH LEFT AND RIGHT ARROWS
+    # THIS FEATURE HAS BEEN TURNED OFF AS SHOCK TIME IS FINE-TUNED BY
+    # THE USER
 
     # Preliminary (t_pre == 1) / Not Preliminary (t_pre == 0)
     #if t_pre == 1:
