@@ -3,6 +3,38 @@ from datetime import datetime, timedelta
 from ai import cdas
 import numpy as np
 import pandas as pd
+import scipy.constants as constants
+
+
+def thermal_speed_to_temperature(V_th):
+    r"""Convert thermal speed into temperature.
+
+    This functions calculates temperature from thermal speed using
+    the formula
+    .. math::
+        T_{\mathrm{p}} = m_{\mathrm{p}}/(2k_{\mathrm{B}})
+            V_{\mathrm{th}}^{2},
+    where :math:`m_{\mathrm{p}}` is the mass of a proton and
+    :math:`k_{\mathrm{B}}` is the Boltzmann constant.
+
+    Parameters
+    ----------
+    V_th : float or array_like
+        Thermal speed in km/s.
+
+    Returns
+    -------
+    T_p
+        Proton temperature in Kelvins.
+    """
+
+    k_B = constants.Boltzmann
+    m_p = constants.m_p
+
+    # V_th is multiplied by 1e3 to convert from km/s to m/s.
+    T_p = m_p/(2*k_B)*(1e3*V_th)**2
+
+    return T_p
 
 
 def download_and_process_data(shock_datetime, SC, filter_options):
@@ -51,6 +83,10 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     # 1970 (Unix epoch)
     shock_epoch = int(shock_datetime.timestamp())
 
+    # ------------------------------------------------------------------
+    # Download and preprocess the data (e.g., convert to correct units)
+    # ------------------------------------------------------------------
+
     if SC == 0:  # ACE
         mag = cdas.get_data(
             'sp_phys', 'AC_H0_MFI', t_start, t_end, ['Magnitude', 'BGSEc'])
@@ -62,17 +98,17 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
         # Magnetic field data
         t_mag = mag['EPOCH'] + timedelta(seconds=8)
-        B = mag['<|B|>'] 
         Bx = mag['BX_GSE']
         By = mag['BY_GSE']
         Bz = mag['BZ_GSE']
-        
+        B = mag['<|B|>']
+
         # Plasma data
         t_pla = pla['EPOCH'] + timedelta(seconds=32)
-        V = pla['SW_H_SPEED']
         Vx = pla['VX_(GSE)']
         Vy = pla['VY_(GSE)']
         Vz = pla['VZ_(GSE)']
+        V = pla['SW_H_SPEED']
         Np = pla['H_DENSITY']
         Tp = pla['H_TEMP_RADIAL']
 
@@ -92,28 +128,28 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
         # Magnetic field data
         t_mag = mag['EPOCH']
-        B = mag['B']
         Bx = mag['BX_(GSE)']
         By = mag['BY_(GSE)']
         Bz = mag['BZ_(GSE)']
+        B = mag['B']
 
         # Plasma data
         t_pla = pla['EPOCH']
-        V = pla['FLOW_SPEED']
         Vx = pla['VX_(GSE)']
         Vy = pla['VY_(GSE)']
         Vz = pla['VZ_(GSE)']
+        V = pla['FLOW_SPEED']
         Np = pla['ION_NP']
-        v_th = pla['SW_VTH']
+        V_th = pla['SW_VTH']
+
+        # Convert thermal speed to temperature
+        Tp = thermal_speed_to_temperature(V_th)
 
         # Position data
         t_pos = pos['EPOCH']
         pos_X = pos['X_(GSE)']
         pos_Y = pos['Y_(GSE)']
         pos_Z = pos['Z_(GSE)']
-
-        # Transform thermal speed to temperature
-        Tp = 60.57376 * v_th**2
 
         # Measurement bin radius for each data point
         bin_rad_wind_pla = pla['DEL_TIME'] * 1e-3
@@ -132,17 +168,17 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
         # Magnetic field data
         t_mag = mag['EPOCH']
-        B = mag['BTOTAL']
         Bx = mag['BR']
         By = mag['BT']
         Bz = mag['BN']
+        B = mag['BTOTAL']
 
         # Plasma data
         t_pla = pla['EPOCH'] + timedelta(seconds=30)
-        V = pla['SPEED']
         Vx = pla['VR']
         Vy = pla['VT']
         Vz = pla['VN']
+        V = pla['SPEED']
         Np = pla['DENSITY']
         Tp = pla['TEMPERATURE']
 
@@ -166,17 +202,17 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
         # Magnetic field data
         t_mag = mag['EPOCH']
-        B = mag['BTOTAL']
         Bx = mag['BR']
         By = mag['BT']
         Bz = mag['BN']
+        B = mag['BTOTAL']
 
         # Plasma data
         t_pla = pla['EPOCH'] + timedelta(seconds=32)
-        V = pla['SPEED']
         Vx = pla['VR']
         Vy = pla['VT']
         Vz = pla['VN']
+        V = pla['SPEED']
         Np = pla['DENSITY']
         Tp = pla['TEMPERATURE']
 
@@ -190,458 +226,490 @@ def download_and_process_data(shock_datetime, SC, filter_options):
             mag = cdas.get_data(
                 'sp_phys', 'HEL1_6SEC_NESSMAG', t_start, t_end,
                 ['B', 'BXSSE', 'BYSSE', 'BZSSE'])
-            HELIOS_no_mag = 0  
-        except:                                                   
+            HELIOS_no_mag = 0
+        except cdas.NoDataError:
             HELIOS_no_mag = 1
         pla = cdas.get_data(
             'sp_phys', 'HELIOS1_40SEC_MAG-PLASMA', t_start, t_end,
             ['B_R', 'B_T', 'B_N',
-             'Np', 'Tp',
-             'Vp', 'Vp_R', 'Vp_T', 'Vp_N'])
+             'Np', 'Tp', 'Vp',
+             'Vp_R', 'Vp_T', 'Vp_N'])
         pos = cdas.get_data(
             'sp_phys', 'HELIOS1_40SEC_MAG-PLASMA', t_start, t_end,
             ['R_Helio', 'clat', 'HGIlong'])
-        
 
         # Plasma data
-        Np = pla['N_P']
-        V = pla['V_P']
-        Tp = pla['T_P']
-        Vx = pla['VP_R'] # V components
+        t_pla = pla['EPOCH']
+        Vx = pla['VP_R']
         Vy = pla['VP_T']
         Vz = pla['VP_N']
-        t_pla = pla['EPOCH']
+        V = pla['V_P']
+        Np = pla['N_P']
+        Tp = pla['T_P']
 
         # Additional magnetic field data from plasma datasets:
-        # These will be used later if the primary mag data is faulty.
-
-        # B components from plasma data
+        # These will be used later if the primary mag data is faulty
+        t_mag_add1 = pla['EPOCH']
         Bx_add1 = pla['B_R']
         By_add1 = pla['B_T']
         Bz_add1 = pla['B_N']
         B_add1 = np.sqrt(Bx_add1**2 + By_add1**2 + Bz_add1**2)
-        t_mag_add1 = pla['EPOCH']
 
         if HELIOS_no_mag == 0:
-           
-            B = mag['B']
-            Bx = -1 * mag['BX_(SSE)'] #B components
+            t_mag = mag['EPOCH']
+            Bx = -1 * mag['BX_(SSE)']
             By = -1 * mag['BY_(SSE)']
             Bz = mag['BZ_(SSE)']
-            t_mag = mag['EPOCH']
+            B = mag['B']
         else:
-            
-            B = B_add1
-            Bx = Bx_add1 #B components
-            By = By_add1
-            Bz = Bz_add1 
             t_mag = t_mag_add1
+            Bx = Bx_add1
+            By = By_add1
+            Bz = Bz_add1
+            B = B_add1
 
         # Position data
+        t_pos = pos['EPOCH']
         pos_X = pos['R_HELIO']
         pos_Y = pos['CARRINGTON/HGI_LATITUDE']
         pos_Z = pos['HGI_LONGITUDE']
-        t_pos = pos['EPOCH']
-
-        
-
-    # Helios 2
-    if SC == 5:
-
-        
+    elif SC == 5:  # Helios 2
         try:
-            mag = cdas.get_data('sp_phys', 'HEL2_6SEC_NESSMAG', t_start, t_end, ['B', 'BXSSE', 'BYSSE', 'BZSSE'])
-    
-            HELIOS_no_mag = 0                                                         
-        except:
+            mag = cdas.get_data(
+                'sp_phys', 'HEL2_6SEC_NESSMAG', t_start, t_end,
+                ['B', 'BXSSE', 'BYSSE', 'BZSSE'])
+            HELIOS_no_mag = 0
+        except cdas.NoDataError:
             HELIOS_no_mag = 1
+        pla = cdas.get_data(
+            'sp_phys', 'HELIOS2_40SEC_MAG-PLASMA', t_start, t_end,
+            ['B_R', 'B_T', 'B_N',
+             'Np', 'Tp', 'Vp',
+             'Vp_R', 'Vp_T', 'Vp_N'])
+        pos =  cdas.get_data(
+            'sp_phys', 'HELIOS2_40SEC_MAG-PLASMA', t_start, t_end,
+            ['R_Helio', 'clat', 'HGIlong'])
 
-        pla = cdas.get_data('sp_phys', 'HELIOS2_40SEC_MAG-PLASMA', t_start, t_end, ['B_R', 'B_T', 'B_N', 'Np', 'Tp', 'Vp', 
-                                                                                    'Vp_R', 'Vp_T', 'Vp_N'])
-        pos =  cdas.get_data('sp_phys', 'HELIOS2_40SEC_MAG-PLASMA', t_start, t_end, ['R_Helio', 'clat', 'HGIlong'])
-      
-       
         # Plasma data
-        Np = pla['N_P']
-        V = pla['V_P']
-        Tp = pla['T_P']
-        Vx = pla['VP_R'] # V components
+        t_pla = pla['EPOCH']
+        Vx = pla['VP_R']
         Vy = pla['VP_T']
         Vz = pla['VP_N']
-        t_pla = pla['EPOCH']
+        V = pla['V_P']
+        Np = pla['N_P']
+        Tp = pla['T_P']
 
         # Additional magnetic field data from plasma datasets:
-        # These will be used later if the primary mag data is faulty.
-
-        # B components from plasma data
+        # These will be used later if the primary mag data is faulty
+        t_mag_add1 = pla['EPOCH']
         Bx_add1 = pla['B_R']
         By_add1 = pla['B_T']
         Bz_add1 = pla['B_N']
         B_add1 = np.sqrt(Bx_add1**2 + By_add1**2 + Bz_add1**2)
-        t_mag_add1 = pla['EPOCH']
 
         if HELIOS_no_mag == 0:
-            # Regular mag data products
-            B = mag['B']
-            Bx = -1 * mag['BX_(SSE)'] #B components
+            t_mag = mag['EPOCH']
+            Bx = -1 * mag['BX_(SSE)']
             By = -1 * mag['BY_(SSE)']
             Bz = mag['BZ_(SSE)']
-            t_mag = mag['EPOCH']
+            B = mag['B']
         else:
-            B = B_add1
-            Bx = Bx_add1 #B components
-            By = By_add1
-            Bz = Bz_add1 
             t_mag = t_mag_add1
+            Bx = Bx_add1
+            By = By_add1
+            Bz = Bz_add1
+            B = B_add1
 
         # Position data
+        t_pos = pos['EPOCH']
         pos_X = pos['R_HELIO']
         pos_Y = pos['CARRINGTON/HGI_LATITUDE']
         pos_Z = pos['HGI_LONGITUDE']
-        t_pos = pos['EPOCH']
-
-
-    # Ulysses
-    if SC == 6:
-        mag = cdas.get_data('sp_phys', 'UY_1SEC_VHM', t_start, t_end, ['B_MAG', 'B_RTN'])
-        pla = cdas.get_data('sp_phys', 'UY_M0_BAI', t_start, t_end, ['Density', 'Temperature', 'Velocity'])
-        pos = cdas.get_data('sp_phys', 'UY_COHO1HR_MERGED_MAG_PLASMA', t_start, t_end, ['heliocentricDistance', 'heliographicLatitude', 'heliographicLongitude'])
+    elif SC == 6:  # Ulysses
+        mag = cdas.get_data(
+            'sp_phys', 'UY_1SEC_VHM', t_start, t_end, ['B_MAG', 'B_RTN'])
+        pla = cdas.get_data(
+            'sp_phys', 'UY_M0_BAI', t_start, t_end,
+            ['Density', 'Temperature', 'Velocity'])
+        pos = cdas.get_data(
+            'sp_phys', 'UY_COHO1HR_MERGED_MAG_PLASMA', t_start, t_end,
+            ['heliocentricDistance', 'heliographicLatitude',
+             'heliographicLongitude'])
         pos_vec = [pos['ULYSSES_DIST'], pos['HGI_LAT'], pos['HGI_LONG']]
 
         # Magnetic field data
-        B = mag['MAGNETIC_FIELD_MAGNITUDE']
-        Bx = mag['R_COMPONENT'] # B components
+        t_mag = mag['EPOCH_TIME']
+        Bx = mag['R_COMPONENT']
         By = mag['T_COMPONENT']
         Bz = mag['N_COMPONENT']
-        t_mag = mag['EPOCH_TIME']
+        B = mag['MAGNETIC_FIELD_MAGNITUDE']
 
         # Plasma data
-        Np = pla['PROTON']
         t_pla = pla['TIME']
-        Vx = pla['VEL_R'] # V components
+        Vx = pla['VEL_R']
         Vy = pla['VEL_T']
-        Vz = pla['VEL_N'] 
-        V = np.sqrt(Vx**2 + Vy**2 + Vz**2) #Bulk speed
+        Vz = pla['VEL_N']
+        V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
+        Np = pla['PROTON']
 
-        # Calculate the mean of the minimum and maximum value temperature datasets
+        # Calculate the mean of the minimum and maximum value
+        # temperature datasets
         Tmax = pla['T-LARGE']
         Tmin = pla['T-SMALL']
         Tp = (Tmax + Tmin) / 2
 
         # Position data
+        t_pos = pos['EPOCH']
         pos_X = pos['ULYSSES_DIST']
         pos_Y = pos['HGI_LAT']
         pos_Z = pos['HGI_LONG']
-        t_pos = pos['EPOCH']
+    elif SC == 7:  # Cluster 3
+        mag = cdas.get_data(
+            'sp_phys', 'C3_CP_FGM_SPIN', t_start, t_end,
+            ['B_mag__C3_CP_FGM_SPIN', 'B_vec_xyz_gse__C3_CP_FGM_SPIN'])
+        pla = cdas.get_data(
+            'sp_phys', 'C3_PP_CIS', t_start, t_end,
+            ['Status__C3_PP_CIS', 'N_HIA__C3_PP_CIS',
+             'V_HIA_xyz_gse__C3_PP_CIS', 'T_HIA_par__C3_PP_CIS',
+             'T_HIA_perp__C3_PP_CIS'])
+        pos = cdas.get_data(
+            'sp_phys', 'C3_CP_FGM_SPIN', t_start, t_end,
+            ['sc_pos_xyz_gse__C3_CP_FGM_SPIN'])
 
-    # Cluster 3
-    if SC == 7:
-        mag = cdas.get_data('sp_phys', 'C3_CP_FGM_SPIN', t_start, t_end, ['B_mag__C3_CP_FGM_SPIN', 'B_vec_xyz_gse__C3_CP_FGM_SPIN'])
-        pla = cdas.get_data('sp_phys', 'C3_PP_CIS', t_start, t_end, ['Status__C3_PP_CIS', 'N_HIA__C3_PP_CIS', 
-                                                                    'V_HIA_xyz_gse__C3_PP_CIS', 'T_HIA_par__C3_PP_CIS', 
-                                                                    'T_HIA_perp__C3_PP_CIS'])
-        pos = cdas.get_data('sp_phys', 'C3_CP_FGM_SPIN', t_start, t_end, ['sc_pos_xyz_gse__C3_CP_FGM_SPIN'])
-        
         # Magnetic field data
-        B = mag['B']
-        Bx = mag['BX_GSE'] #B components
+        t_mag = mag['UT']
+        Bx = mag['BX_GSE']
         By = mag['BY_GSE']
         Bz = mag['BZ_GSE']
-        t_mag = mag['UT']
+        B = mag['B']
 
         # Plasma data
-        status = pla['STATUS[1]'] # Later this variable will be used to check if data was okay
+        status = pla['STATUS[1]']  # This is used to check if the data was okay
+        t_pla = pla['EPOCH']
+        Vx = pla['VX_HIA_GSE']
+        Vy = pla['VY_HIA_GSE']
+        Vz = pla['VZ_HIA_GSE']
+        V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
         Np = pla['N(HIA)']
         Tp_par = pla['T(HIA)_PAR']
         Tp_perp = pla['T(HIA)_PERP']
-        Vx = pla['VX_HIA_GSE'] #V components
-        Vy = pla['VY_HIA_GSE'] 
-        Vz = pla['VZ_HIA_GSE']
-        t_pla = pla['EPOCH']
-        V = np.sqrt(Vx**2 + Vy**2 + Vz**2) #Bulk speed
 
-        # Total proton temperature assuming isotropic velocity distribution
-        Tp = 2.0/3.0 * Tp_perp + 1.0/3.0 * Tp_par
-        Tp *= 1.0e6 #Unit conversion from MK to K
+        # Total proton temperature assuming an isotropic velocity
+        # distribution. The temperature is converted from MK to K
+        Tp = ((2/3)*Tp_perp + (1/3)*Tp_par)*1e6
 
         # Position data
+        t_pos = pos['UT']
         pos_X = pos['C3_X_GSE']
         pos_Y = pos['C3_Y_GSE']
         pos_Z = pos['C3_Z_GSE']
-        t_pos = pos['UT'] 
-
-    # Cluster 1
-    if SC == 8:
-        mag = cdas.get_data('sp_phys', 'C1_CP_FGM_SPIN', t_start, t_end, ['B_mag__C1_CP_FGM_SPIN', 'B_vec_xyz_gse__C1_CP_FGM_SPIN'])
-        pla = cdas.get_data('sp_phys', 'C1_PP_CIS', t_start, t_end, ['Status__C1_PP_CIS', 'N_HIA__C1_PP_CIS', 
-                                                                    'V_HIA_xyz_gse__C1_PP_CIS', 'T_HIA_par__C1_PP_CIS', 
-                                                                    'T_HIA_perp__C1_PP_CIS'])
-        pos = cdas.get_data('sp_phys', 'C1_CP_FGM_SPIN', t_start, t_end, ['sc_pos_xyz_gse__C1_CP_FGM_SPIN'])
-        
+    elif SC == 8:  # Cluster 1
+        mag = cdas.get_data(
+            'sp_phys', 'C1_CP_FGM_SPIN', t_start, t_end,
+            ['B_mag__C1_CP_FGM_SPIN', 'B_vec_xyz_gse__C1_CP_FGM_SPIN'])
+        pla = cdas.get_data(
+            'sp_phys', 'C1_PP_CIS', t_start, t_end,
+            ['Status__C1_PP_CIS', 'N_HIA__C1_PP_CIS',
+             'V_HIA_xyz_gse__C1_PP_CIS', 'T_HIA_par__C1_PP_CIS',
+             'T_HIA_perp__C1_PP_CIS'])
+        pos = cdas.get_data(
+            'sp_phys', 'C1_CP_FGM_SPIN', t_start, t_end,
+            ['sc_pos_xyz_gse__C1_CP_FGM_SPIN'])
 
         # Magnetic field data
-        B = mag['B']
-        Bx = mag['BX_GSE']  #B components
-        By = mag['BY_GSE'] 
-        Bz = mag['BZ_GSE'] 
         t_mag = mag['UT']
+        Bx = mag['BX_GSE']
+        By = mag['BY_GSE']
+        Bz = mag['BZ_GSE']
+        B = mag['B']
 
         # Plasma data
-        status = pla['STATUS[1]'] # Later this variable will be used to check if data was okay
+        status = pla['STATUS[1]']  # This is used to check if the data was okay
+        t_pla = pla['EPOCH']
+        Vx = pla['VX_HIA_GSE']
+        Vy = pla['VY_HIA_GSE']
+        Vz = pla['VZ_HIA_GSE']
+        V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
         Np = pla['N(HIA)']
         Tp_par = pla['T(HIA)_PAR']
         Tp_perp = pla['T(HIA)_PERP']
-        t_pla = pla['EPOCH']
-        Vx = pla['VX_HIA_GSE'] #V components
-        Vy = pla['VY_HIA_GSE']
-        Vz = pla['VZ_HIA_GSE']
-        
-        V = np.sqrt(Vx**2 + Vy**2 + Vz**2) #Bulk speed
 
-        # Total proton temperature assuming isotropic velocity distribution
-        Tp = 2.0/3.0 * Tp_perp + 1.0/3.0 * Tp_par
-        Tp *= 1.0e6 #Unit conversion from MK to K
+        # Total proton temperature assuming an isotropic velocity
+        # distribution. The temperature is converted from MK to K
+        Tp = ((2/3)*Tp_perp + (1/3)*Tp_par)*1e6
 
+        # Position data
+        t_pos = pos['UT']
         pos_X = pos['C1_X_GSE']
         pos_Y = pos['C1_Y_GSE']
         pos_Z = pos['C1_Z_GSE']
-        t_pos = pos['UT'] 
-    
-    # Cluster 4
-    if SC == 9:
-        mag = cdas.get_data('sp_phys', 'C4_CP_FGM_SPIN', t_start, t_end, ['B_mag__C4_CP_FGM_SPIN', 'B_vec_xyz_gse__C4_CP_FGM_SPIN'])
-        pla = cdas.get_data('sp_phys', 'C4_PP_CIS', t_start, t_end, ['Status__C4_PP_CIS', 'N_p__C4_PP_CIS', 
-                                                                    'V_p_xyz_gse__C4_PP_CIS', 'T_p_par__C4_PP_CIS', 
-                                                                    'T_p_perp__C4_PP_CIS'])
-        pos = cdas.get_data('sp_phys', 'C4_CP_FGM_SPIN', t_start, t_end, ['sc_pos_xyz_gse__C4_CP_FGM_SPIN'])
-    
+    if SC == 9:  # Cluster 4
+        mag = cdas.get_data(
+            'sp_phys', 'C4_CP_FGM_SPIN', t_start, t_end,
+            ['B_mag__C4_CP_FGM_SPIN', 'B_vec_xyz_gse__C4_CP_FGM_SPIN'])
+        pla = cdas.get_data(
+            'sp_phys', 'C4_PP_CIS', t_start, t_end,
+            ['Status__C4_PP_CIS', 'N_p__C4_PP_CIS',
+             'V_p_xyz_gse__C4_PP_CIS', 'T_p_par__C4_PP_CIS',
+             'T_p_perp__C4_PP_CIS'])
+        pos = cdas.get_data(
+            'sp_phys', 'C4_CP_FGM_SPIN', t_start, t_end,
+            ['sc_pos_xyz_gse__C4_CP_FGM_SPIN'])
 
         # Magnetic field data
+        t_mag = mag['UT']
+        Bx = mag['BX_GSE']
+        By = mag['BY_GSE']
+        Bz = mag['BZ_GSE']
         B = mag['B']
-        Bx = mag['BX_GSE'] #B components
-        By = mag['BY_GSE'] 
-        Bz = mag['BZ_GSE'] 
-        t_mag = mag['UT'] 
 
         # Plasma data
-        status = pla['STATUS[1]'] # Later this variable will be used to check if data was okay
+        status = pla['STATUS[1]']  # This is used to check if the data was okay
+        t_pla = pla['EPOCH']
+        Vx = pla['VX_P_GSE']
+        Vy = pla['VY_P_GSE']
+        Vz = pla['VZ_P_GSE']
+        V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
         Np = pla['N(P)']
         Tp_par = pla['T(P)_PAR']
         Tp_perp = pla['T(P)_PERP']
-        Vx = pla['VX_P_GSE'] #V components
-        Vy = pla['VY_P_GSE'] 
-        Vz = pla['VZ_P_GSE']
-        t_pla = pla['EPOCH']
 
-        V = np.sqrt(Vx**2 + Vy**2 + Vz**2) #Bulk speed
-
-        # Total proton temperature assuming isotropic velocity distribution
-        Tp = 2.0/3.0 * Tp_perp + 1.0/3.0 * Tp_par
-        Tp *= 1.0e6 # Unit conversion from MK to K
+        # Total proton temperature assuming an isotropic velocity
+        # distribution. The temperature is converted from MK to K
+        Tp = ((2/3)*Tp_perp + (1/3)*Tp_par)*1e6
 
         # Position data
+        t_pos = pos['UT']
         pos_X = pos['C4_X_GSE']
         pos_Y = pos['C4_Y_GSE']
         pos_Z = pos['C4_Z_GSE']
-        t_pos = pos['UT']
-
-    # OMNI
-    if SC == 10:
-        mag = cdas.get_data('sp_phys', 'OMNI_HRO_1MIN', t_start, t_end, ['F', 'BX_GSE', 'BY_GSE', 'BZ_GSE'])
-        pla = cdas.get_data('sp_phys', 'OMNI_HRO_1MIN', t_start, t_end, ['flow_speed', 'Vx', 'Vy', 'Vz', 'proton_density', 'T'])
-        pos = cdas.get_data('sp_phys', 'OMNI_HRO_1MIN', t_start, t_end, ['BSN_x', 'BSN_y', 'BSN_z'])
-        pos_vec = [pos['X_(BSN),_GSE'], pos['Y_(BSN),_GSE'], pos['Z_(BSN),_GSE']]
+    if SC == 10:  # OMNI
+        mag = cdas.get_data(
+            'sp_phys', 'OMNI_HRO_1MIN', t_start, t_end,
+            ['F', 'BX_GSE', 'BY_GSE', 'BZ_GSE'])
+        pla = cdas.get_data(
+            'sp_phys', 'OMNI_HRO_1MIN', t_start, t_end,
+            ['flow_speed', 'Vx', 'Vy', 'Vz', 'proton_density', 'T'])
+        pos = cdas.get_data(
+            'sp_phys', 'OMNI_HRO_1MIN', t_start, t_end,
+            ['BSN_x', 'BSN_y', 'BSN_z'])
+        pos_vec = [
+            pos['X_(BSN),_GSE'], pos['Y_(BSN),_GSE'], pos['Z_(BSN),_GSE']]
         t_pos = pos['EPOCH_TIME']
 
         # Magnetic field data
-        B = mag['MAG_AVG_B-VECTOR']
-        Bx = mag['BX,_GSE'] #B components
+        t_mag = mag['EPOCH_TIME']
+        Bx = mag['BX,_GSE']
         By = mag['BY,_GSE']
         Bz = mag['BZ,_GSE']
-        t_mag = mag['EPOCH_TIME']
+        B = mag['MAG_AVG_B-VECTOR']
 
         # Plasma data
+        t_pla = pla['EPOCH_TIME']
+        Vx = pla['VX_VELOCITY,_GSE']
+        Vy = pla['VY_VELOCITY,_GSE']
+        Vz = pla['VZ_VELOCITY,_GSE']
+        V = pla['FLOW_SPEED,_GSE']
         Np = pla['PROTON_DENSITY']
         Tp = pla['TEMPERATURE']
-        V = pla['FLOW_SPEED,_GSE'] 
-        Vx = pla['VX_VELOCITY,_GSE'] #V components
-        Vy = pla['VY_VELOCITY,_GSE']
-        Vz = pla['VZ_VELOCITY,_GSE']     
-        t_pla = pla['EPOCH_TIME']
 
         # Position data
+        t_pos = pos['EPOCH_TIME']
         pos_X = pos['X_(BSN),_GSE']
         pos_Y = pos['Y_(BSN),_GSE']
         pos_Z = pos['Z_(BSN),_GSE']
-        t_pos = pos['EPOCH_TIME']
+    if SC == 11:  # Voyager 1
+        mag = cdas.get_data(
+            'sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end,
+            ['F1', 'B1', 'B2', 'B3'])
+        pla = cdas.get_data(
+            'sp_phys', 'VOYAGER1_PLS_HIRES_PLASMA_DATA', t_start, t_end,
+            ['V', 'V_rtn', 'dens', 'V_thermal'])
+        pos = cdas.get_data(
+            'sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end,
+            ['scDistance', 'scLon', 'scLat'])
 
-    # Voyager 1
-    if SC == 11:
-        mag = cdas.get_data('sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end, ['F1', 'B1', 'B2', 'B3'])
-        pla = cdas.get_data('sp_phys', 'VOYAGER1_PLS_HIRES_PLASMA_DATA', t_start, t_end, ['V', 'V_rtn', 'dens', 'V_thermal'])
-        pos = cdas.get_data('sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end, ['scDistance', 'scLon', 'scLat'])
-        
         # Magnetic field data
-        B = mag['B-MAGNITUDE_(F1)']
-        Bx = mag['BR_(B1)'] #B components
+        t_mag = mag['EPOCH']
+        Bx = mag['BR_(B1)']
         By = mag['BT_(B2)']
         Bz = mag['BN_(B3)']
-        t_mag = mag['EPOCH']
-
-        # Plasma data
-        Np = pla['PROTON_DENSITY']
-        V_th = pla['VP_THERMAL']
-        Tp = 60.57376 * V_th**2
-        V = pla['VP']
-        Vx = pla['VR'] #V components
-        Vy = pla['VT']
-        Vz = pla['VN']
-        t_pla = pla['EPOCH']
-
-        rad2deg = 180.0 / np.pi  # Conversion factor from radians to degrees
-        pos_X = pos['V1_DIST']
-        pos_Y = pos['V1_LAT_IHG'] * rad2deg
-        pos_Z = pos['V1_LONG_IHG'] * rad2deg
-        t_pos = pos['EPOCH']
-
-    # Voyager 2
-    if SC == 12:
-        mag = cdas.get_data('sp_phys', 'VOYAGER2_2S_MAG', t_start, t_end, ['F1', 'B1', 'B2', 'B3'])
-        pla = cdas.get_data('sp_phys', 'VOYAGER2_PLS_HIRES_PLASMA_DATA', t_start, t_end, ['V', 'V_rtn', 'dens', 'V_thermal'])
-        pos = cdas.get_data('sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end, ['scDistance', 'scLon', 'scLat'])
-    
-        # Magnetic field data
         B = mag['B-MAGNITUDE_(F1)']
-        Bx = mag['BR_(B1)'] #B components
-        By = mag['BT_(B2)']
-        Bz = mag['BN_(B3)']
-        t_mag = mag['EPOCH']
 
         # Plasma data
-        Np = pla['PROTON_DENSITY']
-        V_th = pla['VP_THERMAL']
-        Tp = 60.57376 * V_th**2
-        V = pla['VP']
-        Vx = pla['VR'] #V components
+        t_pla = pla['EPOCH']
+        Vx = pla['VR']
         Vy = pla['VT']
         Vz = pla['VN']
-        t_pla = pla['EPOCH']
+        V = pla['VP']
+        Np = pla['PROTON_DENSITY']
+        V_th = pla['VP_THERMAL']
 
-        rad2deg = 180.0 / np.pi  # Conversion factor from radians to degrees
-        pos_X = pos['V1_DIST']
-        pos_Y = pos['V1_LAT_IHG'] * rad2deg
-        pos_Z = pos['V1_LONG_IHG'] * rad2deg
-        t_pos = pos['EPOCH']
-
-    # DSCOVR
-    if SC == 13:
-        mag = cdas.get_data('sp_phys', 'DSCOVR_H0_MAG', t_start, t_end, ['B1F1', 'B1GSE'])
-        pla = cdas.get_data('sp_phys', 'DSCOVR_H1_FC', t_start, t_end, ['V_GSE', 'Np', 'THERMAL_TEMP'])
-        pos = cdas.get_data('sp_phys', 'DSCOVR_ORBIT_PRE', t_start, t_end, ['GSE_POS'])
-
-        # Magnetic field data
-        B = mag['B']
-        Bx = mag['BX_(GSE)'] #B components
-        By = mag['BY_(GSE)']
-        Bz = mag['BZ_(GSE)']
-        t_mag = mag['EPOCH']
-
-        # Plasma data
-        Np = pla['ION_N']
-        Tp = pla['TEMPERATURE']
-        Vx = pla['VX_(GSE)'] #V components
-        Vy = pla['VY_(GSE)']
-        Vz = pla['VZ_(GSE)'] 
-        V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
-        t_pla=pla['EPOCH'] 
+        # Convert thermal speed to temperature
+        Tp = thermal_speed_to_temperature(V_th)
 
         # Position data
+        t_pos = pos['EPOCH']
+        pos_X = pos['V1_DIST']
+        pos_Y = np.rad2deg(pos['V1_LAT_IHG'])
+        pos_Z = np.rad2deg(pos['V1_LONG_IHG'])
+    if SC == 12:  # Voyager 2
+        mag = cdas.get_data(
+            'sp_phys', 'VOYAGER2_2S_MAG', t_start, t_end,
+            ['F1', 'B1', 'B2', 'B3'])
+        pla = cdas.get_data(
+            'sp_phys', 'VOYAGER2_PLS_HIRES_PLASMA_DATA', t_start, t_end,
+            ['V', 'V_rtn', 'dens', 'V_thermal'])
+        pos = cdas.get_data(
+            'sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end,
+            ['scDistance', 'scLon', 'scLat'])
+
+        # Magnetic field data
+        t_mag = mag['EPOCH']
+        Bx = mag['BR_(B1)']
+        By = mag['BT_(B2)']
+        Bz = mag['BN_(B3)']
+        B = mag['B-MAGNITUDE_(F1)']
+
+        # Plasma data
+        t_pla = pla['EPOCH']
+        Vx = pla['VR']
+        Vy = pla['VT']
+        Vz = pla['VN']
+        V = pla['VP']
+        Np = pla['PROTON_DENSITY']
+        V_th = pla['VP_THERMAL']
+
+        # Convert thermal speed to temperature
+        Tp = thermal_speed_to_temperature(V_th)
+
+        # Position data
+        t_pos = pos['EPOCH']
+        pos_X = pos['V1_DIST']
+        pos_Y = np.rad2deg(pos['V1_LAT_IHG'])
+        pos_Z = np.rad2deg(pos['V1_LONG_IHG'])
+    if SC == 13:  # DSCOVR
+        mag = cdas.get_data(
+            'sp_phys', 'DSCOVR_H0_MAG', t_start, t_end, ['B1F1', 'B1GSE'])
+        pla = cdas.get_data(
+            'sp_phys', 'DSCOVR_H1_FC', t_start, t_end,
+            ['V_GSE', 'Np', 'THERMAL_TEMP'])
+        pos = cdas.get_data(
+            'sp_phys', 'DSCOVR_ORBIT_PRE', t_start, t_end, ['GSE_POS'])
+
+        # Magnetic field data
+        t_mag = mag['EPOCH']
+        Bx = mag['BX_(GSE)']
+        By = mag['BY_(GSE)']
+        Bz = mag['BZ_(GSE)']
+        B = mag['B']
+
+        # Plasma data
+        t_pla=pla['EPOCH']
+        Vx = pla['VX_(GSE)']
+        Vy = pla['VY_(GSE)']
+        Vz = pla['VZ_(GSE)']
+        V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
+        Np = pla['ION_N']
+        Tp = pla['TEMPERATURE']
+
+        # Position data
+        t_pos = pos['EPOCH']
         pos_X = pos['X_GSE']
         pos_Y = pos['Y_GSE']
         pos_Z = pos['Z_GSE']
-        t_pos = pos['EPOCH']
-
-    #PSP
-    if SC == 14:
-        mag = cdas.get_data('sp_phys', 'PSP_FLD_L2_MAG_RTN_1MIN', t_start, t_end, ["psp_fld_l2_mag_RTN_1min"])
-        pla = cdas.get_data('sp_phys', 'PSP_SWP_SPC_L3I', t_start, t_end, ["np_moment_gd", "vp_moment_RTN_gd", 'wp_moment'])
-        pos2 = cdas.get_data('sp_phys', 'PSP_SWP_SPC_L3I', t_start, t_end, ['sc_pos_HCI'])
+    if SC == 14:  # PSP
+        mag = cdas.get_data(
+            'sp_phys', 'PSP_FLD_L2_MAG_RTN_1MIN', t_start, t_end,
+            ['psp_fld_l2_mag_RTN_1min'])
+        pla = cdas.get_data(
+            'sp_phys', 'PSP_SWP_SPC_L3I', t_start, t_end,
+            ['np_moment_gd', 'vp_moment_RTN_gd', 'wp_moment'])
+        pos_HCI = cdas.get_data(
+            'sp_phys', 'PSP_SWP_SPC_L3I', t_start, t_end, ['sc_pos_HCI'])
 
         # Magnetic field data
-        Bx = mag['B_R'] #B components
+        t_mag = mag['EPOCH']
+        Bx = mag['B_R']
         By = mag['B_T']
         Bz = mag['B_N']
-        t_mag = mag['EPOCH']
         B = np.sqrt(Bx**2 + By**2 + Bz**2)
 
         # Plasma data
-        Np = pla['NP_MOMENT']
-        Tp = pla['WP_MOMENT'] #double check
-
-        #V_th = pla['W3_FIT']    #w3_fit_gd? Most probable thermal speed. or wp1_fit? 
-        #Tp = 60.57376 * V_th**2 # Is this right ?
-
-        Vx = pla['VP_MOMENT_R'] #V components
+        t_pla = pla['EPOCH']
+        Vx = pla['VP_MOMENT_R']
         Vy = pla['VP_MOMENT_T']
         Vz = pla['VP_MOMENT_N']
         V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
-        t_pla=pla['EPOCH']
+        Np = pla['NP_MOMENT']
+        V_th = pla['WP_MOMENT']
 
-        # Position data - HCI
-        pos_X = pos2['X_HCI']
-        pos_Y = pos2['Y_HCI']
-        pos_Z = pos2['Z_HCI']
-        t_pos = pos2['EPOCH']
+        # Convert thermal speed to temperature.
+        Tp = thermal_speed_to_temperature(V_th)
 
-        #Converting HCI to (rad, lat, long format)
-        rad_dist = np.sqrt(pos_X**2 + pos_Y**2 + pos_Z**2) * 6.68458712 * 10**-9
-        lat = np.rad2deg(np.arctan(pos_Z / np.sqrt(pos_X**2 + pos_Y**2)))
+        # Position data in heliocentric inertial coordinates (HCI)
+        t_pos = pos_HCI['EPOCH']
+        pos_X = pos_HCI['X_HCI']
+        pos_Y = pos_HCI['Y_HCI']
+        pos_Z = pos_HCI['Z_HCI']
+
+        # Convert HCI to (rad, lat, long) format, where rad is given in
+        # astronomical units and lat and long in degrees
+        rad_dist = np.sqrt(pos_X**2 + pos_Y**2 + pos_Z**2)*(1e3/constants.au)
+        lat = np.rad2deg(np.arctan(pos_Z/np.sqrt(pos_X**2 + pos_Y**2)))
         long = np.mod(np.rad2deg(np.arctan2(pos_Y, pos_X)), 360)
 
+        # Replace position in HCI with position in (rad, lat, long)
         pos_X = rad_dist
         pos_Y = lat
         pos_Z = long
-
-
-    #SOlo
-    if SC == 15:
-        mag = cdas.get_data('sp_phys', 'SOLO_L2_MAG-RTN-NORMAL', t_start, t_end, ["B_RTN"])
-        pla = cdas.get_data('sp_phys', 'SOLO_L2_SWA-PAS-GRND-MOM', t_start, t_end, ["N", "V_RTN", "T"])
-        pos = cdas.get_data('sp_phys', 'SOLO_COHO1HR_MERGED_MAG_PLASMA', t_start, t_end, ["radialDistance", "heliographicLatitude", "heliographicLongitude"])
+    elif SC == 15:  # SolO
+        mag = cdas.get_data(
+            'sp_phys', 'SOLO_L2_MAG-RTN-NORMAL', t_start, t_end, ['B_RTN'])
+        pla = cdas.get_data(
+            'sp_phys', 'SOLO_L2_SWA-PAS-GRND-MOM', t_start, t_end,
+            ['N', 'V_RTN', 'T'])
+        pos = cdas.get_data(
+            'sp_phys', 'SOLO_COHO1HR_MERGED_MAG_PLASMA', t_start, t_end,
+            ['radialDistance', 'heliographicLatitude',
+             'heliographicLongitude'])
 
         # Magnetic field data
-        Bx = mag['B_R'] #B components
+        t_mag = mag['EPOCH']
+        Bx = mag['B_R']
         By = mag['B_T']
         Bz = mag['B_N']
-        t_mag = mag['EPOCH']
         B = np.sqrt(Bx**2 + By**2 + Bz**2)
 
         # Plasma data
-        Np = pla['DENSITY']
-        Tp = pla['TEMPERATURE'] * 11604.52500617
-        Vx = pla['VR_RTN'] #V components
+        t_pla=pla['EPOCH']
+        Vx = pla['VR_RTN']
         Vy = pla['VT_RTN']
         Vz = pla['VN_RTN']
         V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
-        t_pla=pla['EPOCH']
+        Np = pla['DENSITY']
+        Tp = pla['TEMPERATURE']
+
+        # Convert temperature from eV to K
+        Tp = Tp*(constants.eV/constants.Boltzmann)
 
         # Position data
+        t_pos = pos['EPOCH']
         pos_X = pos['RADIAL_DISTANCE']
         pos_Y = pos['HGI_LAT']
         pos_Z = pos['HGI_LONG']
-        t_pos = pos['EPOCH']
-    
-##------------------------------------------------------------------------------
-## Create pandas dataframe of the dataproducts
-##------------------------------------------------------------------------------
+
+    ##------------------------------------------------------------------------------
+    ## Create pandas dataframe of the dataproducts
+    ##------------------------------------------------------------------------------
     if SC not in [7, 8, 9]:
         status = np.full(len(t_pla), np.nan)
-        
+
     #Converting all time vectors from datetime format to UNIX epoch meaning seconds since 1st Jan 1970
     t_mag = [dt.timestamp() for dt in t_mag]
     t_pla = [dt.timestamp() for dt in t_pla]
     t_pos = [dt.timestamp() for dt in t_pos]
-    
+
     # Create dataframes
     mag_dataframe = pd.DataFrame({
         'EPOCH': t_mag,
@@ -668,7 +736,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         'pos_Y': pos_Y,
         'pos_Z': pos_Z
     })
-    
+
     # Additional dataframe for helios
     if SC == 4 or SC == 5:
         add_dataframe = pd.DataFrame({
@@ -677,13 +745,13 @@ def download_and_process_data(shock_datetime, SC, filter_options):
             'Bx': Bx_add1,
             'By': By_add1,
             'Bz': Bz_add1
-            })
+        })
     else:
         add_dataframe = pd.DataFrame()
 
-#------------------------------------------------------------------------------
-# Cleaning the data (removing bad values)
-#------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------
+    # Cleaning the data (removing bad values)
+    #------------------------------------------------------------------------------
 
     # Magnetic field magnitude data
     mag_dataframe['B'] = mag_dataframe['B'].mask((mag_dataframe['B'] > 150) | (mag_dataframe['B'] <= 0))
@@ -739,9 +807,9 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         add_dataframe['By'] = add_dataframe['By'].mask(condition)
         add_dataframe['Bz'] = add_dataframe['Bz'].mask(condition)
 
-# ----------------------------------------------------------------------
-# Median filter for data spikes
-# ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    # Median filter for data spikes
+    # ----------------------------------------------------------------------
 
     if isinstance(filter_options, int):
         filter_options = [filter_options]
@@ -750,7 +818,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     if filter_options[0] != 0:
 
         # User-defined settings
-        if len(filter_options) == 4:    
+        if len(filter_options) == 4:
             median_window_size = filter_options[0]
             tols = filter_options[1:4]
 
@@ -759,16 +827,16 @@ def download_and_process_data(shock_datetime, SC, filter_options):
             median_window_size = 5
             tols = [0.75, 1.5, 0.2]
 
-        # Incorrect input            
+        # Incorrect input
         else:
             raise ValueError('Incorrect input for the spike filter. Must be either 0, 1, or 4-element float array')
 
         # Taking a mean of Np, Tp and V dataseries and removing values that differ
         # from the mean series too much. Allowed difference is set by the corresponding
         # multiplier in the tols array. Np = tols[1], Tp - tols[2] and V - tols[3]
-    
+
         for col_name in ['Np', 'Tp', 'V']:
-            
+
 
             pla_dataframe[col_name + '_median'] = pla_dataframe[col_name].rolling(window=int(median_window_size), center=True).median()
 
@@ -788,35 +856,35 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         pla_dataframe.loc[missing_velocity, ['Vx', 'Vy', 'Vz']] = np.nan
 
 
-##------------------------------------------------------------------------------
-## If the given shock time is only preliminary, a better estimate is determined
-## using magnetic field data
-##------------------------------------------------------------------------------
+    ##------------------------------------------------------------------------------
+    ## If the given shock time is only preliminary, a better estimate is determined
+    ## using magnetic field data
+    ##------------------------------------------------------------------------------
 
     # THIS FEATURE HAS BEEN TURNED OFF AS SHOCK TIME IS ADJUSTED WITH LEFT AND RIGHT ARROWS
 
-    # Preliminary (t_pre == 1) / Not Preliminary (t_pre == 0)    
+    # Preliminary (t_pre == 1) / Not Preliminary (t_pre == 0)
     #if t_pre == 1:
     #    t_shock = check_shock_time(mag_dataframe['EPOCH'], mag_dataframe['B'], shock_epoch)
 
-        # Additional shock time estimate based on additional Helios magnetic 
-        # Field data
-        #if (SC_ID == 4) or (SC_ID == 5) and (HELIOS_no_mag == 0):
-        #    t_shock_new_add1 = check_shock_time(add_dataframe['EPOCH'], add_dataframe['B'], shock_epoch)
-        #else:
-        #    t_shock_new_add1 = np.nan
-        #
-        #t_shock_new = t_shock
+    # Additional shock time estimate based on additional Helios magnetic
+    # Field data
+    #if (SC_ID == 4) or (SC_ID == 5) and (HELIOS_no_mag == 0):
+    #    t_shock_new_add1 = check_shock_time(add_dataframe['EPOCH'], add_dataframe['B'], shock_epoch)
+    #else:
+    #    t_shock_new_add1 = np.nan
+    #
+    #t_shock_new = t_shock
 
-    
-        #if time is not preliminary, new time is the same 
+
+    #if time is not preliminary, new time is the same
     t_shock_new = shock_epoch
     t_shock_new_add1 = shock_epoch
-        
-    
-##------------------------------------------------------------------------------
-## Collecting the position data around the time of the shock
-##------------------------------------------------------------------------------
+
+
+    ##------------------------------------------------------------------------------
+    ## Collecting the position data around the time of the shock
+    ##------------------------------------------------------------------------------
 
     # Find the index of the closest time point to the shock_epoch
     idx = np.argmin(np.abs(pos_dataframe['EPOCH'] - shock_epoch))
@@ -833,22 +901,22 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     scaling_factor = 6378.14
     if SC in [0, 7, 8, 9, 13]:
         SC_pos /= scaling_factor
-    
-##------------------------------------------------------------------------------
-## Determining the validity of the position vector of SC at the time of shock 
-## (POSITION DATA IS RARELY INVALID. DO NOT CHANGE THIS SECTION UNLESS AN 
-##  ADDITIONAL DATA SOURCE TO REPLACE THE INVALID POSITION DATA CAN BE 
-##  DETERMINED AND UTILISED)
-##------------------------------------------------------------------------------
+
+    ##------------------------------------------------------------------------------
+    ## Determining the validity of the position vector of SC at the time of shock
+    ## (POSITION DATA IS RARELY INVALID. DO NOT CHANGE THIS SECTION UNLESS AN
+    ##  ADDITIONAL DATA SOURCE TO REPLACE THE INVALID POSITION DATA CAN BE
+    ##  DETERMINED AND UTILISED)
+    ##------------------------------------------------------------------------------
 
     # Check if the position vector is valid
     # pos_ch: (valid = 1, invalid = 0)
-    
+
     #pos_ch = 1
     #faulty_valuesp = np.where(np.isfinite(SC_pos))
     #if len(faulty_valuesp[0]) < 3:
     #   pos_ch = 0
-    
+
     #If position vector is not valid, other data sources are used (if possible)
 
     #ACE has one additional source
@@ -860,55 +928,55 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     #    t_pos = pos['EPOCH']
     #    t_pos = [dt.timestamp() for dt in t_pos]
     #    t_pos = np.array(t_pos)
-        
+
     #    idx = np.argmin(np.abs(shock_epoch - t_pos))
     #    SC_pos = pos_vec[:, idx] / scaling_factor  # Scale units
 
     #Wind has two additional sources
     #if (SC_ID == 1) and (pos_ch == 0):
 
-        #first source
-        #pos, pos_ch = safe_cdaweb_download('WI_K0_SWE', ['SC_pos_gse'], interval)
-        #pos_vec = pos.SC_pos_gse.dat
-        #t_pos = pos.epoch.dat
-        #idx = min(abs(shock_epoch - t_pos), ind)
-        #SC_pos = pos_vec(*,ind)        
+    #first source
+    #pos, pos_ch = safe_cdaweb_download('WI_K0_SWE', ['SC_pos_gse'], interval)
+    #pos_vec = pos.SC_pos_gse.dat
+    #t_pos = pos.epoch.dat
+    #idx = min(abs(shock_epoch - t_pos), ind)
+    #SC_pos = pos_vec(*,ind)
 
-        #validity check
-        #pos_ch = 1
-        #faulty_valuesp = where(finite(SC_pos) eq 1)
-        #if n_elements(faulty_valuesp) lt 3 then pos_ch = 0
+    #validity check
+    #pos_ch = 1
+    #faulty_valuesp = where(finite(SC_pos) eq 1)
+    #if n_elements(faulty_valuesp) lt 3 then pos_ch = 0
 
-        #second source (used if first source does not give a valid result)
-        #if pos_ch == 0:
-            #restrictions in the second additional position data source: 
-            #used source depends on the time (before or after 1.7.1997 23:50)
-            #CDF_EPOCH, wind_limit, 1997, 07, 01, 23, 50, /COMPUTE_EPOCH
-            #if shock_epoch GE wind_limit then begin
-            #    pos_title = 'WI_OR_PRE'
-            #endif else begin
-            #    pos_title = 'WI_OR_DEF'
-            #endelse
-            #pos, pos_ch = safe_cdaweb_download(pos_title,['GSE_POS'], interval)
-            #pos_vec = pos.GSE_POS.dat    
-            #t_pos = pos.epoch.dat
-            #idx = min(abs(shock_epoch - t_pos), ind)
-            #SC_pos = pos_vec(*,ind)        
-        
-        #SC_pos = SC_pos/scaling_factor #scale units
+    #second source (used if first source does not give a valid result)
+    #if pos_ch == 0:
+    #restrictions in the second additional position data source:
+    #used source depends on the time (before or after 1.7.1997 23:50)
+    #CDF_EPOCH, wind_limit, 1997, 07, 01, 23, 50, /COMPUTE_EPOCH
+    #if shock_epoch GE wind_limit then begin
+    #    pos_title = 'WI_OR_PRE'
+    #endif else begin
+    #    pos_title = 'WI_OR_DEF'
+    #endelse
+    #pos, pos_ch = safe_cdaweb_download(pos_title,['GSE_POS'], interval)
+    #pos_vec = pos.GSE_POS.dat
+    #t_pos = pos.epoch.dat
+    #idx = min(abs(shock_epoch - t_pos), ind)
+    #SC_pos = pos_vec(*,ind)
+
+    #SC_pos = SC_pos/scaling_factor #scale units
 
 
-##------------------------------------------------------------------------------
-## The output
-##------------------------------------------------------------------------------
+    ##------------------------------------------------------------------------------
+    ## The output
+    ##------------------------------------------------------------------------------
 
     # Additional Helios output
     if (SC == 4) or (SC == 5) and (HELIOS_no_mag == 0):
         output_add = [add_dataframe, t_shock_new_add1, SC_pos_add1]
     else:
         output_add = [add_dataframe, t_shock_new, SC_pos]
-        
-    # Information of the measurement radiuses is given as an output 
+
+    # Information of the measurement radiuses is given as an output
     # (this only applies to WIND SC)
     if SC == 1:
         pla_bin_rads = bin_rad_wind_pla
@@ -917,5 +985,4 @@ def download_and_process_data(shock_datetime, SC, filter_options):
 
     return mag_dataframe, pla_dataframe, SC_pos, output_add, t_shock_new, pla_bin_rads
 
-    
- 
+
