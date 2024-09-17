@@ -69,7 +69,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         Spacecraft position data.
     output_add : list
         Additional Helios output.
-    t_shock_new : int
+    shock_epoch : int
         Shock time as seconds since January 1, 1970 (Unix time).
     pla_bin_rads : array_like
         Plasma data bin radii. Only returned for the Wind spacecraft.
@@ -592,7 +592,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
             'sp_phys', 'VOYAGER2_PLS_HIRES_PLASMA_DATA', t_start, t_end,
             ['V', 'V_rtn', 'dens', 'V_thermal'])
         pos = cdas.get_data(
-            'sp_phys', 'VOYAGER1_2S_MAG', t_start, t_end,
+            'sp_phys', 'VOYAGER2_2S_MAG', t_start, t_end,
             ['scDistance', 'scLon', 'scLat'])
 
         # Magnetic field data
@@ -779,9 +779,9 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     else:
         add_dataframe = pd.DataFrame()
 
-    # --------------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Cleaning the data (i.e., removing bad values)
-    # --------------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     # Magnetic field components
     mag_dataframe['Bx'] = mag_dataframe['Bx'].mask(
@@ -852,10 +852,10 @@ def download_and_process_data(shock_datetime, SC, filter_options):
         add_dataframe['By'] = add_dataframe['By'].mask(condition)
         add_dataframe['Bz'] = add_dataframe['Bz'].mask(condition)
 
-    # ----------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # If filtering was chosen by the user, use the median filter to
     # filter out data spikes
-    # ----------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     if isinstance(filter_options, int):
         filter_options = [filter_options]
@@ -872,18 +872,21 @@ def download_and_process_data(shock_datetime, SC, filter_options):
                 'Incorrect input for the spike filter. '
                 'Must be either 0, 1, or a 4-element float array')
 
-        # Taking a mean of the Np, Tp and V data series and removing values that differ
-        # from the mean series too much. Allowed difference is set by the corresponding
-        # multiplier in the tols array. Np = tols[1], Tp - tols[2] and V - tols[3]
+        # Take a running median of the Np, Tp and V Series and remove
+        # values that differ from the median Series too much. The
+        # allowed difference is set by the corresponding multiplier in
+        # the filter_options array. The options in the filter_options
+        # array are [width, Np, Tp, V].
         for var in ['Np', 'Tp', 'V']:
             pla_dataframe[var + '_median'] = pla_dataframe[var].rolling(
                 window=int(median_window_size), center=True).median()
-
+            
             # Calculate the absolute difference from the median
             diff = np.abs(pla_dataframe[var] - pla_dataframe[var + '_median'])
 
             # Calculate the tolerance limit based on the multiplier
-            tol_limit = tols[['Np', 'Tp', 'V'].index(var)] * pla_dataframe[var + '_median']
+            tol_limit = (tols[['Np', 'Tp', 'V'].index(var)]
+                         * pla_dataframe[var + '_median'])
 
             # Replace values exceeding the tolerance with NaN
             pla_dataframe.loc[diff > tol_limit, var] = np.nan
@@ -903,66 +906,70 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     # THIS FEATURE HAS BEEN TURNED OFF AS SHOCK TIME IS FINE-TUNED BY
     # THE USER
 
-    # Preliminary (t_pre == 1) / Not Preliminary (t_pre == 0)
-    #if t_pre == 1:
-    #    t_shock = check_shock_time(mag_dataframe['EPOCH'], mag_dataframe['B'], shock_epoch)
+    # Preliminary (t_pre = 1) / not preliminary (t_pre = 0)
+    # if t_pre == 1:
+    #     t_shock = check_shock_time(
+    #        mag_dataframe['EPOCH'], mag_dataframe['B'], shock_epoch)
+        
+    #     # Additional shock time estimate based on additional Helios
+    #     # magnetic field data
+    #     if (SC_ID == 4) or (SC_ID == 5) and (HELIOS_no_mag == 0):
+    #         t_shock_new_add = check_shock_time(
+    #             add_dataframe['EPOCH'], add_dataframe['B'], shock_epoch)
+    #     else:
+    #         t_shock_new_add = np.nan
+        
+    #     t_shock_new = t_shock
+    # else:
+    #     # if the shock time is not preliminary, the new time is the same
+    #     t_shock_new = shock_epoch
+    #     t_shock_new_add = shock_epoch
 
-    # Additional shock time estimate based on additional Helios magnetic
-    # Field data
-    #if (SC_ID == 4) or (SC_ID == 5) and (HELIOS_no_mag == 0):
-    #    t_shock_new_add1 = check_shock_time(add_dataframe['EPOCH'], add_dataframe['B'], shock_epoch)
-    #else:
-    #    t_shock_new_add1 = np.nan
-    #
-    #t_shock_new = t_shock
+    # ------------------------------------------------------------------
+    # Collecting the position data around the time of the shock
+    # ------------------------------------------------------------------
 
-
-    #if time is not preliminary, new time is the same
-    t_shock_new = shock_epoch
-    t_shock_new_add1 = shock_epoch
-
-
-    ##------------------------------------------------------------------------------
-    ## Collecting the position data around the time of the shock
-    ##------------------------------------------------------------------------------
-
-    # Find the index of the closest time point to the shock_epoch
+    # Find the index of the closest time point to the shock time
     idx = np.argmin(np.abs(pos_dataframe['EPOCH'] - shock_epoch))
 
     # Extract the position vector at the closest time point
     SC_pos = pos_dataframe.loc[idx, ['pos_X', 'pos_Y', 'pos_Z']]
 
-    #Additional position vector based additional Helios data
+    # Additional position vector based on additional Helios data
     if (SC == 4) or (SC == 5) and (HELIOS_no_mag == 0):
         idx = np.argmin(np.abs(add_dataframe['EPOCH'] - shock_epoch))
-        SC_pos_add1 = pos_dataframe.loc[idx, ['pos_X', 'pos_Y', 'pos_Z']]
+        SC_pos_add = pos_dataframe.loc[idx, ['pos_X', 'pos_Y', 'pos_Z']]
 
-    # Position of ACE, Cluster and DSCOVR spacecraft is in km hence rescaling is needed.
+    # Positions of ACE, Cluster, and DSCOVR spacecraft are in km,
+    # rescale them to be expressed in Earth radii (R_E = 6378.14 km)
     scaling_factor = 6378.14
     if SC in [0, 7, 8, 9, 13]:
         SC_pos /= scaling_factor
 
-    ##------------------------------------------------------------------------------
-    ## Determining the validity of the position vector of SC at the time of shock
-    ## (POSITION DATA IS RARELY INVALID. DO NOT CHANGE THIS SECTION UNLESS AN
-    ##  ADDITIONAL DATA SOURCE TO REPLACE THE INVALID POSITION DATA CAN BE
-    ##  DETERMINED AND UTILISED)
-    ##------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Determining the validity of the spacecraft's position vector at
+    # the time of shock (POSITION DATA IS RARELY INVALID. DO NOT CHANGE
+    # THIS SECTION UNLESS AN ADDITIONAL DATA SOURCE TO REPLACE THE
+    # INVALID POSITION DATA CAN BE DETERMINED AND UTILISED)
+    # ------------------------------------------------------------------
+    
+    # NOT IMPLEMENTED IN THIS PYTHON VERSION AT THIS TIME
 
-    # Check if the position vector is valid
-    # pos_ch: (valid = 1, invalid = 0)
+    # Check if the position vector is valid (pos_ch = 1 for a valid
+    # vector, and pos_ch = 0 for an invalid vector)
+    # pos_ch = 1
+    # faulty_valuesp = np.where(np.isfinite(SC_pos))
+    # if len(faulty_valuesp[0]) < 3:
+    #     pos_ch = 0
 
-    #pos_ch = 1
-    #faulty_valuesp = np.where(np.isfinite(SC_pos))
-    #if len(faulty_valuesp[0]) < 3:
-    #   pos_ch = 0
+    # If the position vector is not valid, other data sources are used
+    # (if possible)
 
-    #If position vector is not valid, other data sources are used (if possible)
-
-    #ACE has one additional source
-    #if (SC_ID == 0) and (pos_ch == 0):
-    #    pos, pos_ch = safe_cdaweb_download('AC_H0_SWE', ['SC_pos_GSE'], interval)
-    #
+    # ACE has one additional source
+    # if (SC_ID == 0) and (pos_ch == 0):
+    #    pos, pos_ch = safe_cdaweb_download(
+    #        'AC_H0_SWE', ['SC_pos_GSE'], interval)
+    
     #    pos_vec = [pos['ACE_X-GSE'], pos['ACE_Y-GSE'], pos['ACE_Z-GSE']]
     #    pos_vec = np.array(pos_vec)
     #    t_pos = pos['EPOCH']
@@ -972,57 +979,57 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     #    idx = np.argmin(np.abs(shock_epoch - t_pos))
     #    SC_pos = pos_vec[:, idx] / scaling_factor  # Scale units
 
-    #Wind has two additional sources
-    #if (SC_ID == 1) and (pos_ch == 0):
+    # Wind has two additional sources
+    # if (SC_ID == 1) and (pos_ch == 0):
+    #     # The first source
+    #     pos, pos_ch = safe_cdaweb_download(
+    #         'WI_K0_SWE', ['SC_pos_gse'], interval)
+    #     pos_vec = pos.SC_pos_gse.dat
+    #     t_pos = pos.epoch.dat
+    #     idx = min(abs(shock_epoch - t_pos), ind)
+    #     SC_pos = pos_vec(*,ind)
 
-    #first source
-    #pos, pos_ch = safe_cdaweb_download('WI_K0_SWE', ['SC_pos_gse'], interval)
-    #pos_vec = pos.SC_pos_gse.dat
-    #t_pos = pos.epoch.dat
-    #idx = min(abs(shock_epoch - t_pos), ind)
-    #SC_pos = pos_vec(*,ind)
+    #     Validity check
+    #     pos_ch = 1
+    #     faulty_valuesp = where(finite(SC_pos) eq 1)
+    #     if n_elements(faulty_valuesp) < 3:
+    #         pos_ch = 0
 
-    #validity check
-    #pos_ch = 1
-    #faulty_valuesp = where(finite(SC_pos) eq 1)
-    #if n_elements(faulty_valuesp) lt 3 then pos_ch = 0
+        # The second source (used if first source does not give a valid
+        # result)
+        # if pos_ch == 0:
+        # restrictions in the second additional position data source:
+        # used source depends on the time (before or after 1.7.1997 23:50)
+        # CDF_EPOCH, wind_limit, 1997, 07, 01, 23, 50, /COMPUTE_EPOCH
+        # if shock_epoch >= wind_limit:
+        #     pos_title = 'WI_OR_PRE'
+        # else:
+        # pos_title = 'WI_OR_DEF'
+        # endelse
+        # pos, pos_ch = safe_cdaweb_download(pos_title,['GSE_POS'], interval)
+        # pos_vec = pos.GSE_POS.dat
+        # t_pos = pos.epoch.dat
+        # idx = min(abs(shock_epoch - t_pos), ind)
+        # SC_pos = pos_vec(*,ind)
 
-    #second source (used if first source does not give a valid result)
-    #if pos_ch == 0:
-    #restrictions in the second additional position data source:
-    #used source depends on the time (before or after 1.7.1997 23:50)
-    #CDF_EPOCH, wind_limit, 1997, 07, 01, 23, 50, /COMPUTE_EPOCH
-    #if shock_epoch GE wind_limit then begin
-    #    pos_title = 'WI_OR_PRE'
-    #endif else begin
-    #    pos_title = 'WI_OR_DEF'
-    #endelse
-    #pos, pos_ch = safe_cdaweb_download(pos_title,['GSE_POS'], interval)
-    #pos_vec = pos.GSE_POS.dat
-    #t_pos = pos.epoch.dat
-    #idx = min(abs(shock_epoch - t_pos), ind)
-    #SC_pos = pos_vec(*,ind)
+        # SC_pos = SC_pos/scaling_factor #scale units
 
-    #SC_pos = SC_pos/scaling_factor #scale units
-
-
-    ##------------------------------------------------------------------------------
-    ## The output
-    ##------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # The final output
+    # ------------------------------------------------------------------
 
     # Additional Helios output
     if (SC == 4) or (SC == 5) and (HELIOS_no_mag == 0):
-        output_add = [add_dataframe, t_shock_new_add1, SC_pos_add1]
+        output_add = [add_dataframe, shock_epoch, SC_pos_add]
     else:
-        output_add = [add_dataframe, t_shock_new, SC_pos]
+        output_add = [add_dataframe, shock_epoch, SC_pos]
 
-    # Information of the measurement radiuses is given as an output
-    # (this only applies to WIND SC)
+    # Information of the measurement radii is given as an output (this
+    # only applies to the Wind spacecraft)
     if SC == 1:
         pla_bin_rads = bin_rad_wind_pla
     else:
         pla_bin_rads = 0
 
-    return mag_dataframe, pla_dataframe, SC_pos, output_add, t_shock_new, pla_bin_rads
-
-
+    return (mag_dataframe, pla_dataframe, SC_pos, output_add,
+            shock_epoch, pla_bin_rads)
