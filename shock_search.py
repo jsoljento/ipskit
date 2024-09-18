@@ -9,12 +9,12 @@ config.update({'CACHE': './cache'})
 ipsvm = IPSVM(config)
 
 spacecraft = 'ACE'
-start_time = datetime(2013, 6, 1)
-end_time = datetime(2013, 9, 1)
+start_time = datetime(2013, 8, 1)
+end_time = datetime(2013, 12, 31)
 
 shocks = ipsvm.bigscan(spacecraft, start_time, end_time)
 
-shock_candidates_file = './shock_time_formatting/unformatted_shock_times.txt'
+shock_candidates_file = 'shock_candidates.txt'
 
 with open(shock_candidates_file, 'w') as file:
     for i in range(len(shocks)):
