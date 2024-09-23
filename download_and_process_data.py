@@ -906,7 +906,7 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     # THIS FEATURE HAS BEEN TURNED OFF AS SHOCK TIME IS FINE-TUNED BY
     # THE USER
 
-    # Preliminary (t_pre = 1) / not preliminary (t_pre = 0)
+    # # Preliminary (t_pre = 1) / not preliminary (t_pre = 0)
     # if t_pre == 1:
     #     t_shock = check_shock_time(
     #        mag_dataframe['EPOCH'], mag_dataframe['B'], shock_epoch)
@@ -955,64 +955,69 @@ def download_and_process_data(shock_datetime, SC, filter_options):
     
     # NOT IMPLEMENTED IN THIS PYTHON VERSION AT THIS TIME
 
-    # Check if the position vector is valid (pos_ch = 1 for a valid
-    # vector, and pos_ch = 0 for an invalid vector)
+    # # Check if the position vector is valid (pos_ch = 1 for a valid
+    # # vector, and pos_ch = 0 for an invalid vector)
     # pos_ch = 1
-    # faulty_valuesp = np.where(np.isfinite(SC_pos))
-    # if len(faulty_valuesp[0]) < 3:
+    # faulty_values = np.where(np.isfinite(SC_pos))
+    # if len(faulty_values[0]) < 3:
     #     pos_ch = 0
 
-    # If the position vector is not valid, other data sources are used
-    # (if possible)
+    # # If the position vector is not valid, other data sources are used
+    # # (if possible)
 
-    # ACE has one additional source
-    # if (SC_ID == 0) and (pos_ch == 0):
-    #    pos, pos_ch = safe_cdaweb_download(
-    #        'AC_H0_SWE', ['SC_pos_GSE'], interval)
+    # # ACE has one additional source
+    # if (SC == 0) and (pos_ch == 0):
+    #    pos = cdas.get_data(
+    #        'sp_phys', 'AC_H0_SWE', t_start, t_end, ['SC_pos_GSE'])
     
-    #    pos_vec = [pos['ACE_X-GSE'], pos['ACE_Y-GSE'], pos['ACE_Z-GSE']]
-    #    pos_vec = np.array(pos_vec)
-    #    t_pos = pos['EPOCH']
-    #    t_pos = [dt.timestamp() for dt in t_pos]
-    #    t_pos = np.array(t_pos)
+    #    pos_vec = np.array(
+    #        [pos['ACE_X-GSE'], pos['ACE_Y-GSE'], pos['ACE_Z-GSE']])
+    #    t_pos = np.array([dt.timestamp() for dt in [pos['EPOCH']]])
 
     #    idx = np.argmin(np.abs(shock_epoch - t_pos))
-    #    SC_pos = pos_vec[:, idx] / scaling_factor  # Scale units
+    #    SC_pos = pos_vec[:, idx]/scaling_factor
 
-    # Wind has two additional sources
-    # if (SC_ID == 1) and (pos_ch == 0):
+    # # Wind has two additional sources
+    # if (SC == 1) and (pos_ch == 0):
     #     # The first source
-    #     pos, pos_ch = safe_cdaweb_download(
-    #         'WI_K0_SWE', ['SC_pos_gse'], interval)
-    #     pos_vec = pos.SC_pos_gse.dat
-    #     t_pos = pos.epoch.dat
-    #     idx = min(abs(shock_epoch - t_pos), ind)
-    #     SC_pos = pos_vec(*,ind)
+    #     pos = cdas.get_data(
+    #         'sp_phys', 'WI_K0_SWE', t_start, t_end, ['SC_pos_gse'])
+        
+    #     pos_vec = np.array(
+    #         [pos['WI_X_(GSE)'], pos['WI_Y_(GSE)'], pos['WI_Z_(GSE)']])
+    #     t_pos = np.array([dt.timestamp() for dt in [pos['EPOCH']]])
+        
+    #     idx = np.argmin(np.abs(shock_epoch - t_pos))
+    #     SC_pos = pos_vec[:, idx]
 
-    #     Validity check
+    #     # Validity check
     #     pos_ch = 1
-    #     faulty_valuesp = where(finite(SC_pos) eq 1)
-    #     if n_elements(faulty_valuesp) < 3:
+    #     faulty_values = np.where(np.isfinite(SC_pos))
+    #     if len(faulty_values[0]) < 3:
     #         pos_ch = 0
 
-        # The second source (used if first source does not give a valid
-        # result)
-        # if pos_ch == 0:
-        # restrictions in the second additional position data source:
-        # used source depends on the time (before or after 1.7.1997 23:50)
-        # CDF_EPOCH, wind_limit, 1997, 07, 01, 23, 50, /COMPUTE_EPOCH
-        # if shock_epoch >= wind_limit:
-        #     pos_title = 'WI_OR_PRE'
-        # else:
-        # pos_title = 'WI_OR_DEF'
-        # endelse
-        # pos, pos_ch = safe_cdaweb_download(pos_title,['GSE_POS'], interval)
-        # pos_vec = pos.GSE_POS.dat
-        # t_pos = pos.epoch.dat
-        # idx = min(abs(shock_epoch - t_pos), ind)
-        # SC_pos = pos_vec(*,ind)
+    #     # The second source (used only if the first source does not
+    #     # give a valid result)
+    #     if pos_ch == 0:
+    #         # The source for the second additional position data depends
+    #         # on the time (before or after 1.7.1997 23:50)
+    #         wind_limit = datetime(1997, 7, 1, 23, 50).timestamp()
+    #         if shock_epoch >= wind_limit:
+    #             pos_title = 'WI_OR_PRE'
+    #         else:
+    #             pos_title = 'WI_OR_DEF'
+            
+    #         pos = cdas.get_data(
+    #             'sp_phys', pos_title, t_start, t_end, ['GSE_POS'])
+            
+    #         pos_vec = np.array(
+    #             [pos['GSE_X'], pos['GSE_Y'], pos['GSE_Z']])
+    #         t_pos = np.array([dt.timestamp() for dt in [pos['EPOCH']]])
+            
+    #         idx = np.argmin(np.abs(shock_epoch - t_pos))
+    #         SC_pos = pos_vec[:, idx]
 
-        # SC_pos = SC_pos/scaling_factor #scale units
+    #     SC_pos = SC_pos/scaling_factor
 
     # ------------------------------------------------------------------
     # The final output
