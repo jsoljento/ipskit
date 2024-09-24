@@ -16,7 +16,7 @@
 # translation the Parker Solar Probe (PSP) and Solar Orbiter (SolO)
 # spacecraft were added, and the code was simplified to better suit the
 # current workflow where shocks are found using the automated machine
-# learning algortihm IPSVM (https://bitbucket.org/raysofspace/ipsvm).
+# learning algorithm IPSVM (https://bitbucket.org/raysofspace/ipsvm).
 # ----------------------------------------------------------------------
 
 from datetime import datetime, timedelta
