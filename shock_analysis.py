@@ -676,8 +676,8 @@ analysis_output_fname = 'shock_parameters.dat'
 # The default and an alternative method for determining the shock
 # normal. The method IDs are: 0 = MX3, 1 = MFC, 2 = MX1 + MX2 average,
 # 3 = MVA (not implemented)
-orig_normal_method_ID = 0
-additional_normal_method_ID = 1
+orig_normal_method_id = 0
+additional_normal_method_id = 1
 
 # Directory for saving the shock plots and the CSV file where the final
 # results for clear shocks are saved to
@@ -865,8 +865,7 @@ header_line_csv = (
     "is_radial_velocity,"
     "analysis_interval,"
     "magnetic_field_resolution,"
-    "plasma_resolution"
-)
+    "plasma_resolution")
 
 # Write the header to the CSV files for both the clear and unclear
 # shocks
@@ -884,11 +883,10 @@ bad_events = []
 # ----------------------------------------------------------------------
 
 for i in range(0, N_sh):
-
     # For run time duration estimation
     loop_start_time = time.time()
 
-    # Initializing booleans for the shock event
+    # Initializing Booleans for the shock event
     time_adjusted = False
     unclear = False
 
@@ -896,7 +894,8 @@ for i in range(0, N_sh):
     # Downloading and processing data for the analysis
     # ------------------------------------------------------------------
 
-    mag_dataframe, pla_dataframe, SC_pos, output_add, shock_timestamp_new, pla_bin_rads = download_and_process_data(
+    (mag_dataframe, pla_dataframe, sc_pos, output_add,
+     shock_timestamp_new, pla_bin_rads) = download_and_process_data(
         shock_datetimes[i], sc, filter_options)
 
     # ------------------------------------------------------------------
@@ -906,79 +905,80 @@ for i in range(0, N_sh):
     shock_timestamps[i] = shock_timestamp_new
 
     # ------------------------------------------------------------------
-    # Determine the shock type (FF or FR) as well as the upstream and
+    # Determining the shock type (FF or FR) as well as the upstream and
     # downstream mean values.
     # ------------------------------------------------------------------
 
     mag_vars = ['B', 'Bx', 'By', 'Bz']
-    pla_vars = ['Np', 'Tp', 'V', 'Vx', 'Vy', 'Vz']
+    pla_vars = ['Vx', 'Vy', 'Vz', 'V', 'Np', 'Tp']
 
-    # Determining the analysis intervals in the upstream and downstream areas.
-    # Note that these depend on the shock type (FF or FR).
+    # Determine the analysis intervals upstream and downstream of the
+    # shock. Note that these depend on the shock type (FF or FR).
 
-    length = 8 * 60  # Length of the analysis intervals in seconds
-    # (default length 8 min)
+    # Length of the analysis intervals in seconds (default 8 minutes)
+    length = 8 * 60
 
-    length_limit = 30 * 60  # Maximum possible distance from the shock time
+    # Maximum possible distance from the shock time (30 minutes)
+    length_limit = 30 * 60
 
-    # Voyager 1 and Voyager 2 have a different length limit
-    if (sc == 11) or (sc == 12):
-        length_limit = 3 * 12.0 * 60.0
-
-    upstream_gap = 1 * 60  # Interval excluded upstream from the shock
-    downstream_gap = 2 * 60  # interval excluded downstream from the shock
-
+    # Ulysses, Voyager 1, and Voyager 2 have a different length limits
+    # for the analysis intervals (12 minutes for Ulysses and 36 minutes
+    # Voyager 1 and 2)
     if sc == 6:
-        length = 12 * 60  # For Ulysses the default length is 12 minutes
+        length = 12 * 60
+    elif sc in [11, 12]:
+        length_limit = 36 * 60
 
-    # Test iteratively if the shock fulfils the criteria of FF shock (loop 0)
-    # or FR shock (loop 1)
-    helios_dataset_flag = 0  # 0 = 6 sec magnetic field data,
-    # 1 = 40.5 sec magnetic field data
+    # Intervals excluded upstream (1 minute) and downstream (2 minutes)
+    # of the shock
+    upstream_gap = 1 * 60
+    downstream_gap = 2 * 60
+
+    # Initialize the Helios data flag, 0 for 6 sec magnetic field data
+    # and 1 for 40.5 sec magnetic field data
+    helios_dataset_flag = 0
 
     # Next: Checking that there is enough datapoints around the shock.
     # If not, the length of the analysis interval is increased until either the
     # upper limit for the interval length is reached or upstream and downstream
     # intervals both contain at least 3 data points
 
-    # First loop checks for FF
-    # Second loop checks for FR
+    # Test iteratively if the shock fulfils the criteria of an FF shock
+    # (loop index 0) or an FR shock (loop index 1)
     for j in range(1, -1, -1):
-
         too_few_mag_points = 0
         too_few_pla_points = 0
 
-        upstream_furthest = upstream_gap + length  # Furthest point of the upstream interval from the shock
-        downstream_furthest = downstream_gap + length  # Furthest point of the downstream interval
+        # Furthest points of the upstream and downstream intervals from
+        # the shock
+        upstream_furthest = upstream_gap + length
+        downstream_furthest = downstream_gap + length
 
-        # Other SCs
-        if (sc != 4) and (sc != 5) and (sc != 6) and (
-                sc != 11) and (sc != 12):
+        # Other spacecraft
+        if sc not in [4, 5, 6, 11, 12]:
             t_up_both = np.array([
-                [shock_timestamps[i] - upstream_furthest, shock_timestamps[i] - upstream_gap],
-                [shock_timestamps[i] + upstream_gap, shock_timestamps[i] + upstream_furthest]
-            ])
+                [shock_timestamps[i] - upstream_furthest,
+                 shock_timestamps[i] - upstream_gap],
+                [shock_timestamps[i] + upstream_gap,
+                 shock_timestamps[i] + upstream_furthest]])
             t_down_both = np.array([
-                [shock_timestamps[i] + downstream_gap, shock_timestamps[i] + downstream_furthest],
-                [shock_timestamps[i] - downstream_furthest, shock_timestamps[i] - downstream_gap]
-            ])
-
+                [shock_timestamps[i] + downstream_gap,
+                 shock_timestamps[i] + downstream_furthest],
+                [shock_timestamps[i] - downstream_furthest,
+                 shock_timestamps[i] - downstream_gap]])
         # Helios, Ulysses and Voyager
-        if (sc == 4) or (sc == 5) or (sc == 6) or (sc == 11) or (
-                sc == 12):
+        elif sc in [4, 5, 6, 11, 12]:
             while abs(upstream_furthest - upstream_gap) <= length_limit:
-
                 t_up_both = np.array([
-                    [shock_timestamps[i] - upstream_furthest, shock_timestamps[i] - upstream_gap],
-                    [shock_timestamps[i] + upstream_gap, shock_timestamps[i] + upstream_furthest]
-                ])
-
+                    [shock_timestamps[i] - upstream_furthest,
+                     shock_timestamps[i] - upstream_gap],
+                    [shock_timestamps[i] + upstream_gap,
+                     shock_timestamps[i] + upstream_furthest]])
                 t_down_both = np.array([
                     [shock_timestamps[i] + downstream_gap,
                      shock_timestamps[i] + downstream_furthest],
                     [shock_timestamps[i] - downstream_furthest,
-                     shock_timestamps[i] - downstream_gap]
-                ])
+                     shock_timestamps[i] - downstream_gap]])
 
                 t_up = t_up_both[j]
                 t_down = t_down_both[j]
@@ -988,38 +988,41 @@ for i in range(0, N_sh):
                 too_few_pla_points = analysis_interval_check(
                     pla_dataframe, pla_vars, t_up, t_down)
 
-                # Increase the interval length if there is less than 3 data points in the current interval.
+                # Increase the interval length if the current interval
+                # contains less than 3 data points.
                 if too_few_mag_points or too_few_pla_points:
-                    if ((sc == 4) or (sc == 5)) and (
-                            helios_dataset_flag == 0) and (
-                            too_few_mag_points == 1):
-                        # Change mag data source for Helios if there was not
-                        # enough data points. Replace magnetic field data with the additional data
-                        # (this is the mag data from the plasma product datasets)
+                    # Change the magnetic field data source for Helios
+                    # if there were not enough data points. Replace the
+                    # magnetic field data with the additional data
+                    # (i.e., the magnetic field data from the plasma
+                    # product datasets)
+                    if (sc in [4, 5]
+                            and (helios_dataset_flag == 0)
+                            and (too_few_mag_points == 1)):
+                        helios_dataset_flag = 1
 
                         add_dataframe = output_add[0]
-                        helios_dataset_flag = 1
+                        shock_timestamps[i] = output_add[1]
+                        sc_pos = output_add[2]
+
                         mag_dataframe['EPOCH'] = add_dataframe['EPOCH']
                         mag_dataframe['B'] = add_dataframe['B']
                         mag_dataframe['Bx'] = add_dataframe['Bx']
                         mag_dataframe['By'] = add_dataframe['By']
                         mag_dataframe['Bz'] = add_dataframe['Bz']
-                        shock_timestamps[i] = output_add[1]
-                        SC_pos = output_add[2]
 
-                    # Increase the interval by the minimum resolution of the data
-                    # which did not have enough data points.
-
+                    # Increase the interval by the minimum resolution
+                    # of the data product which did not have enough
+                    # data points.
                     if too_few_pla_points == 0:
-                        increment = return_resolution(mag_vars[0], sc,
-                                                      helios_dataset_flag)
+                        increment = return_resolution(
+                            mag_vars[0], sc, helios_dataset_flag)
                     else:
-                        increment = return_resolution(pla_vars[0], sc,
-                                                      helios_dataset_flag)
+                        increment = return_resolution(
+                            pla_vars[0], sc, helios_dataset_flag)
 
                     upstream_furthest += increment
                     downstream_furthest += increment
-
                 else:
                     break
 
@@ -1252,7 +1255,7 @@ for i in range(0, N_sh):
         # Other SCs than Helios, Ulysses and Voyager, PSP and SOlo are approximated to be at 1 AU
         if (sc == 4) or (sc == 5) or (sc == 6) or (sc == 11) or (
                 sc == 12) or (sc == 14) or (sc == 15):
-            r_AU = np.abs(SC_pos.iloc[0])
+            r_AU = np.abs(sc_pos.iloc[0])
 
         A = 1.462768889297766 * 1e+05
         B = -0.664193092275818
@@ -1317,21 +1320,21 @@ for i in range(0, N_sh):
 
         # method IDs: 0=MX3-method,1=MFC-method,2=MX1+MX2-avg-method,3=MVA-analysis
 
-        normal_method_ID = orig_normal_method_ID  # Defined in the beginning of code
+        normal_method_id = orig_normal_method_id  # Defined in the beginning of code
 
         # If there is no velocity vector data additional method is used
         if bad_vel == 1:
-            normal_method_ID = additional_normal_method_ID
+            normal_method_id = additional_normal_method_id
 
         normal_eq_input = {}
 
         normal = shock_normal(type, B_vector_up, B_vector_down, V_vector_up,
-                              V_vector_down, normal_method_ID)
+                              V_vector_down, normal_method_id)
 
-        # normal_method_ID = 3: use Minimum Variance Analysis of magnetic field data
+        # normal_method_id = 3: use Minimum Variance Analysis of magnetic field data
         # to determine the normal (NOT USED AT THE MOMENT)
 
-        # if (normal_method_ID == 3):
+        # if (normal_method_id == 3):
         #     RESOLVE_ROUTINE, 'mva_normal'
         #     mva_normal, shock_timestamps, SC, normal, eigs, an_int, e_ratio
         #     normal = normal_sign(normal, type, V_vector_up)
@@ -1347,7 +1350,7 @@ for i in range(0, N_sh):
 
         if (np.dot(delta_B, normal) > 1e-12 or
             np.dot(np.cross(delta_B, delta_V),
-                   normal) > 1e-12) and normal_method_ID == 0:
+                   normal) > 1e-12) and normal_method_id == 0:
             raise ValueError(
                 'MX3-normal is not correct: should be perp to (delta_V x delta_B) and delta_B')
 
@@ -1465,7 +1468,7 @@ for i in range(0, N_sh):
                                 doo_Vms_doo_Te,
                                 doo_beta_doo_Te, V_shock, M_A_up, Mms_up,
                                 normal,
-                                normal_method_ID, shock_type)
+                                normal_method_id, shock_type)
     # --------------------------------------------------------------------------
     # Drawing a PS plot in a file (named, e.g., '19980205_2105.ps')
     # --------------------------------------------------------------------------
@@ -1678,7 +1681,7 @@ for i in range(0, N_sh):
     output_line = (
         f"{t_print: >4}     "  # t_print with right alignment, minimum width 4
         f"{shock_type:<3}    "  # shock_type with left alignment, width 3
-        f"{SC_pos.iloc[0]:9.4f} {SC_pos.iloc[1]:9.4f} {SC_pos.iloc[2]:9.4f}    "  # SC_pos formatted as vector_ft
+        f"{sc_pos.iloc[0]:9.4f} {sc_pos.iloc[1]:9.4f} {sc_pos.iloc[2]:9.4f}    "  # sc_pos formatted as vector_ft
         f"{B_mean_up:8.4f} +- {errors[0]:8.4f}    "
         f"{B_vector_up[0]:8.4f} +- {errors[1]:8.4f}    "
         f"{B_vector_up[1]:8.4f} +- {errors[2]:8.4f}    "
@@ -1729,7 +1732,7 @@ for i in range(0, N_sh):
         f"{minute:>2},"
         f"{second:>2},"
         f"{shock_type:<2},"
-        f"{SC_pos.iloc[0]:.4f},{SC_pos.iloc[1]:.4f},{SC_pos.iloc[2]:.4f},"
+        f"{sc_pos.iloc[0]:.4f},{sc_pos.iloc[1]:.4f},{sc_pos.iloc[2]:.4f},"
         f"{B_mean_up:.4f},{errors[0]:.4f},"
         f"{B_vector_up[0]:.4f},{errors[1]:.4f},"
         f"{B_vector_up[1]:.4f},{errors[2]:.4f},"
