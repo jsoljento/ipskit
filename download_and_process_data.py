@@ -69,7 +69,7 @@ def download_and_process_data(shock_datetime, sc, filter_options):
         Spacecraft position data.
     output_add : list
         Additional Helios output.
-    shock_epoch : int
+    shock_timestamp : int
         Shock time as seconds since January 1, 1970 (Unix time).
     pla_bin_rads : array_like
         Plasma data bin radii. Only returned for the Wind spacecraft.
@@ -81,7 +81,7 @@ def download_and_process_data(shock_datetime, sc, filter_options):
 
     # Convert the shock time from datetime to seconds after January 1,
     # 1970 (Unix time)
-    shock_epoch = int(shock_datetime.timestamp())
+    shock_timestamp = int(shock_datetime.timestamp())
 
     # Create empty arrays for the different data products; these will
     # be replaced by the full arrays when the data is downloaded.
@@ -909,35 +909,35 @@ def download_and_process_data(shock_datetime, sc, filter_options):
     # # Preliminary (t_pre = 1) / not preliminary (t_pre = 0)
     # if t_pre == 1:
     #     t_shock = check_shock_time(
-    #        mag_dataframe['EPOCH'], mag_dataframe['B'], shock_epoch)
+    #        mag_dataframe['EPOCH'], mag_dataframe['B'], shock_timestamp)
         
     #     # Additional shock time estimate based on additional Helios
     #     # magnetic field data
     #     if (sc == 4) or (sc == 5) and (helios_no_mag == 0):
     #         t_shock_new_add = check_shock_time(
-    #             add_dataframe['EPOCH'], add_dataframe['B'], shock_epoch)
+    #             add_dataframe['EPOCH'], add_dataframe['B'], shock_timestamp)
     #     else:
     #         t_shock_new_add = np.nan
         
     #     t_shock_new = t_shock
     # else:
     #     # if the shock time is not preliminary, the new time is the same
-    #     t_shock_new = shock_epoch
-    #     t_shock_new_add = shock_epoch
+    #     t_shock_new = shock_timestamp
+    #     t_shock_new_add = shock_timestamp
 
     # ------------------------------------------------------------------
     # Collecting the position data around the time of the shock
     # ------------------------------------------------------------------
 
     # Find the index of the closest time point to the shock time
-    idx = np.argmin(np.abs(pos_dataframe['EPOCH'] - shock_epoch))
+    idx = np.argmin(np.abs(pos_dataframe['EPOCH'] - shock_timestamp))
 
     # Extract the position vector at the closest time point
     sc_pos = pos_dataframe.loc[idx, ['pos_X', 'pos_Y', 'pos_Z']]
 
     # Additional position vector based on additional Helios data
     if (sc == 4) or (sc == 5) and (helios_no_mag == 0):
-        idx = np.argmin(np.abs(add_dataframe['EPOCH'] - shock_epoch))
+        idx = np.argmin(np.abs(add_dataframe['EPOCH'] - shock_timestamp))
         sc_pos_add = pos_dataframe.loc[idx, ['pos_X', 'pos_Y', 'pos_Z']]
 
     # Positions of ACE, Cluster, and DSCOVR spacecraft are in km,
@@ -974,7 +974,7 @@ def download_and_process_data(shock_datetime, sc, filter_options):
     #        [pos['ACE_X-GSE'], pos['ACE_Y-GSE'], pos['ACE_Z-GSE']])
     #    t_pos = np.array([dt.timestamp() for dt in [pos['EPOCH']]])
 
-    #    idx = np.argmin(np.abs(shock_epoch - t_pos))
+    #    idx = np.argmin(np.abs(shock_timestamp - t_pos))
     #    sc_pos = pos_vec[:, idx]/scaling_factor
 
     # # Wind has two additional sources
@@ -987,7 +987,7 @@ def download_and_process_data(shock_datetime, sc, filter_options):
     #         [pos['WI_X_(GSE)'], pos['WI_Y_(GSE)'], pos['WI_Z_(GSE)']])
     #     t_pos = np.array([dt.timestamp() for dt in [pos['EPOCH']]])
         
-    #     idx = np.argmin(np.abs(shock_epoch - t_pos))
+    #     idx = np.argmin(np.abs(shock_timestamp - t_pos))
     #     sc_pos = pos_vec[:, idx]
 
     #     # Validity check
@@ -1002,7 +1002,7 @@ def download_and_process_data(shock_datetime, sc, filter_options):
     #         # The source for the second additional position data depends
     #         # on the time (before or after 1.7.1997 23:50)
     #         wind_limit = datetime(1997, 7, 1, 23, 50).timestamp()
-    #         if shock_epoch >= wind_limit:
+    #         if shock_timestamp >= wind_limit:
     #             pos_title = 'WI_OR_PRE'
     #         else:
     #             pos_title = 'WI_OR_DEF'
@@ -1014,7 +1014,7 @@ def download_and_process_data(shock_datetime, sc, filter_options):
     #             [pos['GSE_X'], pos['GSE_Y'], pos['GSE_Z']])
     #         t_pos = np.array([dt.timestamp() for dt in [pos['EPOCH']]])
             
-    #         idx = np.argmin(np.abs(shock_epoch - t_pos))
+    #         idx = np.argmin(np.abs(shock_timestamp - t_pos))
     #         sc_pos = pos_vec[:, idx]
 
     #     sc_pos = sc_pos/scaling_factor
@@ -1025,9 +1025,9 @@ def download_and_process_data(shock_datetime, sc, filter_options):
 
     # Additional Helios output
     if (sc == 4) or (sc == 5) and (helios_no_mag == 0):
-        output_add = [add_dataframe, shock_epoch, sc_pos_add]
+        output_add = [add_dataframe, shock_timestamp, sc_pos_add]
     else:
-        output_add = [add_dataframe, shock_epoch, sc_pos]
+        output_add = [add_dataframe, shock_timestamp, sc_pos]
 
     # Information of the measurement radii is given as an output (this
     # only applies to the Wind spacecraft)
@@ -1037,4 +1037,4 @@ def download_and_process_data(shock_datetime, sc, filter_options):
         pla_bin_rads = 0
 
     return (mag_dataframe, pla_dataframe, sc_pos, output_add,
-            shock_epoch, pla_bin_rads)
+            shock_timestamp, pla_bin_rads)
