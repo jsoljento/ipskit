@@ -39,7 +39,7 @@ from error_analysis import error_analysis
 # FUNCTIONS AND PROCEDURES REQUIRED BY THE SHOCK ANALYSIS PROGRAM
 # ----------------------------------------------------------------------
 
-def analysis_interval_check(t_up, t_down, var_names, df):
+def analysis_interval_check(data, var_names, t_up, t_down):
     """Check that there is enough data to proceed with the analysis.
 
     This function checks that there are at least three data points in
@@ -47,14 +47,14 @@ def analysis_interval_check(t_up, t_down, var_names, df):
 
     Parameters
     ----------
+    data : pandas.DataFrame
+        Input DataFrame.
+    var_names : array_like
+        Array of variables to loop through.
     t_up : array_like
         Start and end time of the upstream interval.
     t_down : array_like
         Start and end time of the downstream interval.
-    var_names : array_like
-        Array of variables to loop through.
-    df : pandas.DataFrame
-        Input DataFrame.
 
     Returns
     -------
@@ -69,10 +69,10 @@ def analysis_interval_check(t_up, t_down, var_names, df):
     # Loop through the given variables
     for var in var_names:
         # Choose the data in the upstream and downstream intervals
-        data_up = df[
-            (df['EPOCH'] >= t_up[0]) & (df['EPOCH'] <= t_up[1])][var]
-        data_down = df[
-            (df['EPOCH'] >= t_down[0]) & (df['EPOCH'] <= t_down[1])][var]
+        data_up = data[
+            (data['EPOCH'] >= t_up[0]) & (data['EPOCH'] <= t_up[1])][var]
+        data_down = data[
+            (data['EPOCH'] >= t_down[0]) & (data['EPOCH'] <= t_down[1])][var]
 
         # Count the datapoints in the intervals
         points_up = data_up.notna().sum()
@@ -87,16 +87,16 @@ def analysis_interval_check(t_up, t_down, var_names, df):
     return too_few_datapoints
 
 
-def return_resolution(var_name, SC, Helios_flag):
+def return_resolution(var_name, sc, helios_flag):
     """Return the data resolution for a given spacecraft.
 
     Parameters
     ----------
     var_name : str
         Name of the variable.
-    SC : int
+    sc : int
         The spacecraft ID number.
-    Helios_flag : int
+    helios_flag : int
         Helios data flag, 0 for 6 sec magnetic field data and 1 for
         40.5 sec magnetic field data.
 
@@ -109,40 +109,40 @@ def return_resolution(var_name, SC, Helios_flag):
     mag_res = None
     pla_res = None
 
-    if SC == 0:
+    if sc == 0:
         mag_res = 16.
         pla_res = 64.
-    elif SC == 1:
+    elif sc == 1:
         mag_res = 3.
         pla_res = 90.
-    elif SC in [2, 3]:
+    elif sc in [2, 3]:
         mag_res = 0.125
         pla_res = 60.
-    elif (SC in [4, 5]) and (Helios_flag == 0):
+    elif (sc in [4, 5]) and (helios_flag == 0):
         mag_res = 6.
         pla_res = 40.5
-    elif (SC in [4, 5]) and (Helios_flag == 1):
+    elif (sc in [4, 5]) and (helios_flag == 1):
         mag_res = 40.5
         pla_res = 40.5
-    elif SC == 6:
+    elif sc == 6:
         pla_res = 240.
         mag_res = 1.
-    elif SC in [7, 8, 9]:
+    elif sc in [7, 8, 9]:
         mag_res = 4.
         pla_res = 4.
-    elif SC == 10:
+    elif sc == 10:
         mag_res = 60.
         pla_res = 60.
-    elif SC in [11, 12]:
+    elif sc in [11, 12]:
         mag_res = 1.92
         pla_res = 12.
-    elif SC == 13:
+    elif sc == 13:
         mag_res = 1.
         pla_res = 60.
-    elif SC == 14:
+    elif sc == 14:
         mag_res = 60.
         pla_res = 0.87
-    elif SC == 15:
+    elif sc == 15:
         mag_res = 0.126
         pla_res = 4.0
 
@@ -152,7 +152,7 @@ def return_resolution(var_name, SC, Helios_flag):
     return res
 
 
-def mean_data(var_names, interval, df):
+def mean_data(data, var_names, interval):
     """Calculate the mean and standard deviation of a data product.
 
     This function calculates the mean and standard deviation for the
@@ -161,13 +161,13 @@ def mean_data(var_names, interval, df):
 
     Parameters
     ----------
+    data : pandas.DataFrame
+        DataFrame containing the data for which the mean and standard
+        deviation are calculated.
     var_names : array_like
         Array of the names of the variables.
     interval : array_like
         Start and end of the time interval.
-    df : pandas.DataFrame
-        DataFrame containing the data for which the mean and standard
-        deviation are calculated.
 
     Returns
     -------
@@ -182,9 +182,9 @@ def mean_data(var_names, interval, df):
     std_vals = {}
 
     for var in var_names:
-        if var in df:
-            data_interval = df[
-                (df['EPOCH'] >= t_start) & (df['EPOCH'] <= t_end)][var]
+        if var in data:
+            data_interval = data[
+                (data['EPOCH'] >= t_start) & (data['EPOCH'] <= t_end)][var]
             mean_vals[var] = data_interval.mean(skipna=True)
             std_vals[var] = data_interval.std(skipna=True)
 
@@ -198,7 +198,7 @@ def mean_data(var_names, interval, df):
     return mean_vals, std_vals
 
 
-def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
+def calculate_mean_resolution(data, var_names, t_up, t_down, sc, helios_flag):
     """Calculate the mean data resolution over a time interval.
 
     This function calculates the mean data resolution for the given
@@ -208,20 +208,20 @@ def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
 
     Parameters
     ----------
+    data : pandas.DataFrame
+        DataFrame containing the data for which the mean resolution is
+        calculated.
+    var_names : array_like
+        Array of variables to loop through.
     t_up : array_like
         Start and end time of the upstream interval.
     t_down : array_like
         Start and end time of the downstream interval.
-    var_names : array_like
-        Array of variables to loop through.
-    SC : int
+    sc : int
         The spacecraft ID number.
-    Helios_flag : int
+    helios_flag : int
         Helios data flag, 0 for 6 sec magnetic field data and 1 for
         40.5 sec magnetic field data.
-    df : pandas.DataFrame
-        DataFrame containing the data for which the mean resolution is
-        calculated.
 
     Returns
     -------
@@ -235,28 +235,28 @@ def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
     avg_res_max = 0
 
     for var in var_names:
-        if var in df:
-            data_interval = df[
-                (df['EPOCH'] >= interval_start)
-                & (df['EPOCH'] <= interval_end)
-                & df[var].notna()][var]
+        if var in data:
+            data_interval = data[
+                (data['EPOCH'] >= interval_start)
+                & (data['EPOCH'] <= interval_end)
+                & data[var].notna()][var]
 
             # Count non-null values after applying the mask
-            gd_points = data_interval.count()
+            good_points = data_interval.count()
 
-            if gd_points == 0:
+            if good_points == 0:
                 print("Not enough data for variable: " + str(var))
                 return False
 
-            if gd_points < 6 and SC in [4, 5, 6]:
+            if good_points < 6 and sc in [4, 5, 6]:
                 return False
 
-            res = return_resolution(var, SC, Helios_flag)
+            res = return_resolution(var, sc, helios_flag)
             avg_res = res
             pnts_reg = (interval_end - interval_start) // res
 
-            if pnts_reg > gd_points:
-                avg_res = (interval_end - interval_start) / gd_points
+            if pnts_reg > good_points:
+                avg_res = (interval_end - interval_start) / good_points
 
             if avg_res > avg_res_max:
                 avg_res_max = avg_res
@@ -264,12 +264,12 @@ def calculate_mean_resolution(t_up, t_down, var_names, SC, Helios_flag, df):
     return avg_res_max
 
 
-def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
+def resample(data, t_original, t_lower_res, interval, sc, bin_rad=None):
     """Resample input data to a lower resolution.
 
     Parameters
     ----------
-    var_data : array_like
+    data : array_like
         Data that is resampled to a lower resolution.
     t_original : array_like
         Time coordinates of the original data.
@@ -278,7 +278,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
         this resolution.
     interval : array_like
         Interval over which resampling is performed.
-    SC : int
+    sc : int
         Spacecraft ID number. See documentation for details.
     bin_rad : array_like
         A radius around each data point. For example ACE's plasma data
@@ -310,7 +310,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     # For Wind there may be a different radius for each plasma data
     # point, i.e., the plasma data resolution is not necessarily
     # constant
-    if SC == 1:
+    if sc == 1:
         bin_rad_up = bin_rad[interval_mask]
     else:
         bin_rad_up = 0
@@ -319,7 +319,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
     t_bins = np.zeros((n_interval_ticks, 2))
     if bin_rad is not None:
         for i in range(n_interval_ticks):
-            if SC == 1:
+            if sc == 1:
                 rad = np.abs(bin_rad_up[i])
             else:
                 rad = np.abs(bin_rad)
@@ -330,7 +330,7 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
                 rad = local_min_res / 2
 
             # Special case for the Voyager spacecraft
-            if SC in [11, 12] and (local_min_res / 2) > rad:
+            if sc in [11, 12] and (local_min_res / 2) > rad:
                 rad = local_min_res / 2
 
             t_bins = np.array(
@@ -352,8 +352,8 @@ def resample(var_data, t_original, t_lower_res, interval, SC, bin_rad=None):
             (t_original > t_bins[j, 0]) & (t_original <= t_bins[j, 1]))[0]
 
         if len(indices) > 0:
-            # Average values in var_data corresponding to these indices
-            resampled_data[j] = np.nanmean(var_data[indices])
+            # Average values in data corresponding to these indices
+            resampled_data[j] = np.nanmean(data[indices])
         else:
             # If no indices fall within the bin, assign NaN
             resampled_data[j] = np.nan
@@ -983,12 +983,10 @@ for i in range(0, N_sh):
                 t_up = t_up_both[j]
                 t_down = t_down_both[j]
 
-                too_few_mag_points = analysis_interval_check(t_up, t_down,
-                                                             mag_vars,
-                                                             mag_dataframe)
-                too_few_pla_points = analysis_interval_check(t_up, t_down,
-                                                             pla_vars,
-                                                             pla_dataframe)
+                too_few_mag_points = analysis_interval_check(
+                    mag_dataframe, mag_vars, t_up, t_down)
+                too_few_pla_points = analysis_interval_check(
+                    pla_dataframe, pla_vars, t_up, t_down)
 
                 # Increase the interval length if there is less than 3 data points in the current interval.
                 if too_few_mag_points or too_few_pla_points:
@@ -1051,10 +1049,10 @@ for i in range(0, N_sh):
 
         # Calculating the mean and standard deviation values of the parameters
         # in the upstream and downstream
-        mag_up_dct = mean_data(mag_vars, t_up, mag_dataframe)
-        mag_down_dct = mean_data(mag_vars, t_down, mag_dataframe)
-        pla_up_dct = mean_data(pla_vars, t_up, pla_dataframe)
-        pla_down_dct = mean_data(pla_vars, t_down, pla_dataframe)
+        mag_up_dct = mean_data(mag_dataframe, mag_vars, t_up)
+        mag_down_dct = mean_data(mag_dataframe, mag_vars, t_down)
+        pla_up_dct = mean_data(pla_dataframe, pla_vars, t_up)
+        pla_down_dct = mean_data(pla_dataframe, pla_vars, t_down)
 
         # The mean values of the parameters assigned explicitly
         B_mean_up = mag_up_dct[0]["B"]
@@ -1161,12 +1159,10 @@ for i in range(0, N_sh):
         # analysis intervals
         # --------------------------------------------------------------------------
 
-        avg_res_mag = calculate_mean_resolution(t_up, t_down, mag_vars, SC_ID,
-                                                Helios_dataset_flag,
-                                                mag_dataframe)
-        avg_res_pla = calculate_mean_resolution(t_up, t_down, pla_vars, SC_ID,
-                                                Helios_dataset_flag,
-                                                pla_dataframe)
+        avg_res_mag = calculate_mean_resolution(
+            mag_dataframe, mag_vars, t_up, t_down, SC_ID, Helios_dataset_flag)
+        avg_res_pla = calculate_mean_resolution(
+            pla_dataframe, pla_vars, t_up, t_down, SC_ID, Helios_dataset_flag)
 
         if not avg_res_mag or not avg_res_pla:
             print("problem with mean res calculations")
@@ -1297,8 +1293,8 @@ for i in range(0, N_sh):
         })
 
         # Calculate the mean values and standard deviations in the upstream area
-        pla_char_up_dct = mean_data(['Cs', 'V_A', 'Vms', 'beta', 'Dp'], t_up,
-                                    pla_char_dataframe)
+        pla_char_up_dct = mean_data(
+            pla_char_dataframe, ['Cs', 'V_A', 'Vms', 'beta', 'Dp'], t_up)
 
         # For error analysis purposes calculate also other means
         # (basically partial derivatives)
