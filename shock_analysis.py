@@ -701,7 +701,7 @@ with open(shock_times_fname, 'r') as file1:
     comment11 = ''
     comment12 = ''
     comment13 = ''
-    SC_ID = 0
+    sc_id = 0
     comment2 = ''
     plot_events = 0
     comment31 = ''
@@ -719,7 +719,7 @@ with open(shock_times_fname, 'r') as file1:
         elif i == 2:
             comment13 = line.strip()
         elif i == 3:
-            SC_ID = int(line.strip())
+            sc_id = int(line.strip())
         elif i == 4:
             comment2 = line.strip()
         elif i == 5:
@@ -785,7 +785,7 @@ with open(shock_times_out_fname, 'w') as file2:
     file2.write(comment11 + '\n')
     file2.write(f'{"": >15}' + comment12 + '\n')
     file2.write(f'{"": >15}' + comment13 + '\n')
-    file2.write(str(SC_ID) + '\n')
+    file2.write(str(sc_id) + '\n')
     file2.write(comment2 + '\n')
     file2.write(str(plot_events) + '\n')
     file2.write(comment31 + '\n')
@@ -897,7 +897,7 @@ for i in range(0, N_sh):
     # ------------------------------------------------------------------
 
     mag_dataframe, pla_dataframe, SC_pos, output_add, t_shock_new, pla_bin_rads = download_and_process_data(
-        shock_datetimes[i], SC_ID, filter_options)
+        shock_datetimes[i], sc_id, filter_options)
 
     # ------------------------------------------------------------------
     # Updating the shock time
@@ -922,18 +922,18 @@ for i in range(0, N_sh):
     length_limit = 30 * 60  # Maximum possible distance from the shock time
 
     # Voyager 1 and Voyager 2 have a different length limit
-    if (SC_ID == 11) or (SC_ID == 12):
+    if (sc_id == 11) or (sc_id == 12):
         length_limit = 3 * 12.0 * 60.0
 
     upstream_gap = 1 * 60  # Interval excluded upstream from the shock
     downstream_gap = 2 * 60  # interval excluded downstream from the shock
 
-    if SC_ID == 6:
+    if sc_id == 6:
         length = 12 * 60  # For Ulysses the default length is 12 minutes
 
     # Test iteratively if the shock fulfils the criteria of FF shock (loop 0)
     # or FR shock (loop 1)
-    Helios_dataset_flag = 0  # 0 = 6 sec magnetic field data,
+    helios_dataset_flag = 0  # 0 = 6 sec magnetic field data,
     # 1 = 40.5 sec magnetic field data
 
     # Next: Checking that there is enough datapoints around the shock.
@@ -952,8 +952,8 @@ for i in range(0, N_sh):
         downstream_furthest = downstream_gap + length  # Furthest point of the downstream interval
 
         # Other SCs
-        if (SC_ID != 4) and (SC_ID != 5) and (SC_ID != 6) and (
-                SC_ID != 11) and (SC_ID != 12):
+        if (sc_id != 4) and (sc_id != 5) and (sc_id != 6) and (
+                sc_id != 11) and (sc_id != 12):
             t_up_both = np.array([
                 [t_shock[i] - upstream_furthest, t_shock[i] - upstream_gap],
                 [t_shock[i] + upstream_gap, t_shock[i] + upstream_furthest]
@@ -964,8 +964,8 @@ for i in range(0, N_sh):
             ])
 
         # Helios, Ulysses and Voyager
-        if (SC_ID == 4) or (SC_ID == 5) or (SC_ID == 6) or (SC_ID == 11) or (
-                SC_ID == 12):
+        if (sc_id == 4) or (sc_id == 5) or (sc_id == 6) or (sc_id == 11) or (
+                sc_id == 12):
             while abs(upstream_furthest - upstream_gap) <= length_limit:
 
                 t_up_both = np.array([
@@ -990,15 +990,15 @@ for i in range(0, N_sh):
 
                 # Increase the interval length if there is less than 3 data points in the current interval.
                 if too_few_mag_points or too_few_pla_points:
-                    if ((SC_ID == 4) or (SC_ID == 5)) and (
-                            Helios_dataset_flag == 0) and (
+                    if ((sc_id == 4) or (sc_id == 5)) and (
+                            helios_dataset_flag == 0) and (
                             too_few_mag_points == 1):
                         # Change mag data source for Helios if there was not
                         # enough data points. Replace magnetic field data with the additional data
                         # (this is the mag data from the plasma product datasets)
 
                         add_dataframe = output_add[0]
-                        Helios_dataset_flag = 1
+                        helios_dataset_flag = 1
                         mag_dataframe['EPOCH'] = add_dataframe['EPOCH']
                         mag_dataframe['B'] = add_dataframe['B']
                         mag_dataframe['Bx'] = add_dataframe['Bx']
@@ -1011,11 +1011,11 @@ for i in range(0, N_sh):
                     # which did not have enough data points.
 
                     if too_few_pla_points == 0:
-                        increment = return_resolution(mag_vars[0], SC_ID,
-                                                      Helios_dataset_flag)
+                        increment = return_resolution(mag_vars[0], sc_id,
+                                                      helios_dataset_flag)
                     else:
-                        increment = return_resolution(pla_vars[0], SC_ID,
-                                                      Helios_dataset_flag)
+                        increment = return_resolution(pla_vars[0], sc_id,
+                                                      helios_dataset_flag)
 
                     upstream_furthest += increment
                     downstream_furthest += increment
@@ -1120,7 +1120,7 @@ for i in range(0, N_sh):
         if len(gg_up) == 0 or len(gg_down) == 0:
             bad_vel = 1
 
-        if bad_vel == 1 and (SC_ID == 2 or SC_ID == 3):
+        if bad_vel == 1 and (sc_id == 2 or sc_id == 3):
             # Change the time series variables
             pla_pnts = len(pla_dataframe['EPOCH'])
             pla_dataframe['Vx'] = pla_dataframe['V']
@@ -1160,9 +1160,9 @@ for i in range(0, N_sh):
         # --------------------------------------------------------------------------
 
         avg_res_mag = calculate_mean_resolution(
-            mag_dataframe, mag_vars, t_up, t_down, SC_ID, Helios_dataset_flag)
+            mag_dataframe, mag_vars, t_up, t_down, sc_id, helios_dataset_flag)
         avg_res_pla = calculate_mean_resolution(
-            pla_dataframe, pla_vars, t_up, t_down, SC_ID, Helios_dataset_flag)
+            pla_dataframe, pla_vars, t_up, t_down, sc_id, helios_dataset_flag)
 
         if not avg_res_mag or not avg_res_pla:
             print("problem with mean res calculations")
@@ -1174,25 +1174,25 @@ for i in range(0, N_sh):
         # --------------------------------------------------------------------------
 
         # Averaging bin radiuses of plasma data for resampling
-        if SC_ID == 0:
+        if sc_id == 0:
             bin_rad = 32.0  # i.e. 64 / 2 --> (+- 32sec)
-        if SC_ID == 1:
+        if sc_id == 1:
             bin_rad = pla_bin_rads  # Determined in the downloaded data
-        if (SC_ID == 2) or (SC_ID == 3):
+        if (sc_id == 2) or (sc_id == 3):
             bin_rad = 30.0
-        if (SC_ID == 4) or (SC_ID == 5):
+        if (sc_id == 4) or (sc_id == 5):
             bin_rad = 20.25
-        if SC_ID == 6:
+        if sc_id == 6:
             bin_rad = 60.0
-        if SC_ID == 10:
+        if sc_id == 10:
             bin_rad = 30.0
-        if (SC_ID == 11) or (SC_ID == 12):
+        if (sc_id == 11) or (sc_id == 12):
             bin_rad = 6.0
-        if SC_ID == 13:
+        if sc_id == 13:
             bin_rad = 30.0
-        if SC_ID == 14:
+        if sc_id == 14:
             bin_rad = 30.0
-        if SC_ID == 15:
+        if sc_id == 15:
             bin_rad = 2
 
         # Extract values of Np and Tp in the interval
@@ -1207,27 +1207,27 @@ for i in range(0, N_sh):
 
         # Magnetic field data is resampled to the resolution of plasma data if
         # B-data has higher resolution
-        if (SC_ID in [0, 1, 2, 3, 6, 11, 12, 13, 15]) or (
-                SC_ID in [4, 5] and Helios_dataset_flag == 0):
+        if (sc_id in [0, 1, 2, 3, 6, 11, 12, 13, 15]) or (
+                sc_id in [4, 5] and helios_dataset_flag == 0):
 
             B_rs = resample(mag_dataframe['B'], mag_dataframe['EPOCH'],
-                            pla_dataframe['EPOCH'], t_up, SC_ID, bin_rad)
+                            pla_dataframe['EPOCH'], t_up, sc_id, bin_rad)
             B_is_averaged = 1
 
         # PSP - plasma data is higher res than mag data
-        elif SC_ID in [14]:
+        elif sc_id in [14]:
             Np = resample(pla_dataframe['Np'], pla_dataframe['EPOCH'],
-                          mag_dataframe['EPOCH'], t_up, SC_ID, bin_rad)
+                          mag_dataframe['EPOCH'], t_up, sc_id, bin_rad)
             Tp = resample(pla_dataframe['Tp'], pla_dataframe['EPOCH'],
-                          mag_dataframe['EPOCH'], t_up, SC_ID, bin_rad)
+                          mag_dataframe['EPOCH'], t_up, sc_id, bin_rad)
             V = resample(pla_dataframe['V'], pla_dataframe['EPOCH'],
-                         mag_dataframe['EPOCH'], t_up, SC_ID, bin_rad)
+                         mag_dataframe['EPOCH'], t_up, sc_id, bin_rad)
             B_rs = Bt
 
         else:
             # For Cluster only linear interpolation is required since time tags
             # are almost the same (difference in order of ms)
-            if (SC_ID == 7) or (SC_ID == 8) or (SC_ID == 9):
+            if (sc_id == 7) or (sc_id == 8) or (sc_id == 9):
                 B_rs = np.interp(pla_dataframe[
                                      (pla_dataframe['EPOCH'] >= t_up[0]) & (
                                                  pla_dataframe['EPOCH'] <= t_up[
@@ -1250,8 +1250,8 @@ for i in range(0, N_sh):
         r_AU = 1
 
         # Other SCs than Helios, Ulysses and Voyager, PSP and SOlo are approximated to be at 1 AU
-        if (SC_ID == 4) or (SC_ID == 5) or (SC_ID == 6) or (SC_ID == 11) or (
-                SC_ID == 12) or (SC_ID == 14) or (SC_ID == 15):
+        if (sc_id == 4) or (sc_id == 5) or (sc_id == 6) or (sc_id == 11) or (
+                sc_id == 12) or (sc_id == 14) or (sc_id == 15):
             r_AU = np.abs(SC_pos.iloc[0])
 
         A = 1.462768889297766 * 1e+05
@@ -1276,7 +1276,7 @@ for i in range(0, N_sh):
         # Form dataframe time series for these parameters
         # Extract timestamps from 'EPOCH' column of pla_dataframe
         t_ax = pla_dataframe['EPOCH']
-        if SC_ID in [14]:  # Lower res t_ax is the mag t_ax with PSP
+        if sc_id in [14]:  # Lower res t_ax is the mag t_ax with PSP
             t_ax = mag_dataframe['EPOCH']
 
         # Filter timestamps
@@ -1482,7 +1482,7 @@ for i in range(0, N_sh):
     shock_time = datetime.fromtimestamp(t_shock[i])
 
     mag_res_format = '(F9.1)'
-    if SC_ID in [2, 3, 11, 12]:
+    if sc_id in [2, 3, 11, 12]:
         mag_res_format = '(F9.3)'
 
     # Scale the units of temperature from Kelvins to 10^4 Kelvins
@@ -1517,13 +1517,13 @@ for i in range(0, N_sh):
     # Initialize global variables for storing the vertical line and last click time
     last_click_time = shock_time  # Start with shock time
 
-    # if SC_ID in [11, 12]:  # Handling datagaps for Voyager spacecraft
+    # if sc_id in [11, 12]:  # Handling datagaps for Voyager spacecraft
     #    Ball = B[np.isfinite(B)]
     #    t_mag_fix = t_mag[np.isfinite(B)]
 
     # Creating the filename for the plot
     apu = shock_time.strftime('%Y%m%d_%H%M%S')
-    fname = f"{apu}_{SC_names[SC_ID]}"
+    fname = f"{apu}_{SC_names[sc_id]}"
 
     # Convert the EPOCH columns to datetime objects
     mag_dataframe['EPOCH'] = [datetime.fromtimestamp(element) for element in
@@ -1531,8 +1531,8 @@ for i in range(0, N_sh):
     pla_dataframe['EPOCH'] = [datetime.fromtimestamp(element) for element in
                               pla_dataframe["EPOCH"]]
 
-    # Adjust time range based on SC_ID
-    if SC_ID in [4, 5, 6, 11, 12]:
+    # Adjust time range based on sc_id
+    if sc_id in [4, 5, 6, 11, 12]:
         time_range = [shock_time - timedelta(hours=1),
                       shock_time + timedelta(hours=1)]
     else:
@@ -1552,7 +1552,7 @@ for i in range(0, N_sh):
     axs[0].xaxis.set_minor_locator(AutoMinorLocator(10))
     axs[0].yaxis.set_minor_locator(AutoMinorLocator(5))
     axs[0].tick_params(labelbottom=False)
-    title = f"{shock_type} Shock {month_names[shock_time.month - 1]} {shock_time.day}, {shock_time.year}, {shock_time.strftime('%H:%M:%S')} UT, {SC_titles[SC_ID]}"
+    title = f"{shock_type} Shock {month_names[shock_time.month - 1]} {shock_time.day}, {shock_time.year}, {shock_time.strftime('%H:%M:%S')} UT, {SC_titles[sc_id]}"
     axs[0].set_title(title, fontsize=18, weight='light')
 
     axs[1].plot(pla_dataframe['EPOCH'].values, pla_dataframe['V'].values,
