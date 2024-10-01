@@ -616,7 +616,7 @@ def on_key(event):
         time_adjusted = True
         if last_click_time:
             formatted_final_time = last_click_time.strftime(
-                "%Y    %#m    %#d    %#H    %#M    %#S")
+                '%Y    %m    %d    %H    %M    %S')
 
             with open(shock_times_out_fname, 'a') as f:
                 f.write(formatted_final_time + '\n')
