@@ -750,7 +750,7 @@ with open(shock_times_fname, 'r') as file1:
     data = [[], [], [], [], [], []]  # Raw string data from the file
     shock_datetimes = []  # Datetime objects
     shock_formatted_times = []  # Times as formatted strings
-    t_shock = []  # Seconds since January 1, 1970 (Unix epoch)
+    shock_timestamps = []  # Seconds since January 1, 1970 (Unix epoch)
 
     # Read the shock times from input text file
     for i in range(11, len(lines)):
@@ -773,7 +773,7 @@ with open(shock_times_fname, 'r') as file1:
             datetime_format.strftime('%Y-%m-%d/%H:%M'))
 
     # Change the time format to seconds since January 1, 1970
-    t_shock = [
+    shock_timestamps = [
         (dt - datetime(1970, 1, 1)).total_seconds() for dt in shock_datetimes]
 
 # ----------------------------------------------------------------------
@@ -896,14 +896,14 @@ for i in range(0, N_sh):
     # Downloading and processing data for the analysis
     # ------------------------------------------------------------------
 
-    mag_dataframe, pla_dataframe, SC_pos, output_add, t_shock_new, pla_bin_rads = download_and_process_data(
+    mag_dataframe, pla_dataframe, SC_pos, output_add, shock_timestamp_new, pla_bin_rads = download_and_process_data(
         shock_datetimes[i], sc_id, filter_options)
 
     # ------------------------------------------------------------------
     # Updating the shock time
     # ------------------------------------------------------------------
 
-    t_shock[i] = t_shock_new
+    shock_timestamps[i] = shock_timestamp_new
 
     # ------------------------------------------------------------------
     # Determine the shock type (FF or FR) as well as the upstream and
@@ -955,12 +955,12 @@ for i in range(0, N_sh):
         if (sc_id != 4) and (sc_id != 5) and (sc_id != 6) and (
                 sc_id != 11) and (sc_id != 12):
             t_up_both = np.array([
-                [t_shock[i] - upstream_furthest, t_shock[i] - upstream_gap],
-                [t_shock[i] + upstream_gap, t_shock[i] + upstream_furthest]
+                [shock_timestamps[i] - upstream_furthest, shock_timestamps[i] - upstream_gap],
+                [shock_timestamps[i] + upstream_gap, shock_timestamps[i] + upstream_furthest]
             ])
             t_down_both = np.array([
-                [t_shock[i] + downstream_gap, t_shock[i] + downstream_furthest],
-                [t_shock[i] - downstream_furthest, t_shock[i] - downstream_gap]
+                [shock_timestamps[i] + downstream_gap, shock_timestamps[i] + downstream_furthest],
+                [shock_timestamps[i] - downstream_furthest, shock_timestamps[i] - downstream_gap]
             ])
 
         # Helios, Ulysses and Voyager
@@ -969,15 +969,15 @@ for i in range(0, N_sh):
             while abs(upstream_furthest - upstream_gap) <= length_limit:
 
                 t_up_both = np.array([
-                    [t_shock[i] - upstream_furthest, t_shock[i] - upstream_gap],
-                    [t_shock[i] + upstream_gap, t_shock[i] + upstream_furthest]
+                    [shock_timestamps[i] - upstream_furthest, shock_timestamps[i] - upstream_gap],
+                    [shock_timestamps[i] + upstream_gap, shock_timestamps[i] + upstream_furthest]
                 ])
 
                 t_down_both = np.array([
-                    [t_shock[i] + downstream_gap,
-                     t_shock[i] + downstream_furthest],
-                    [t_shock[i] - downstream_furthest,
-                     t_shock[i] - downstream_gap]
+                    [shock_timestamps[i] + downstream_gap,
+                     shock_timestamps[i] + downstream_furthest],
+                    [shock_timestamps[i] - downstream_furthest,
+                     shock_timestamps[i] - downstream_gap]
                 ])
 
                 t_up = t_up_both[j]
@@ -1004,7 +1004,7 @@ for i in range(0, N_sh):
                         mag_dataframe['Bx'] = add_dataframe['Bx']
                         mag_dataframe['By'] = add_dataframe['By']
                         mag_dataframe['Bz'] = add_dataframe['Bz']
-                        t_shock[i] = output_add[1]
+                        shock_timestamps[i] = output_add[1]
                         SC_pos = output_add[2]
 
                     # Increase the interval by the minimum resolution of the data
@@ -1033,7 +1033,7 @@ for i in range(0, N_sh):
         jump_to_plotting = False
         if ((too_few_mag_points == 1) or (too_few_pla_points == 1)) and (
                 j == 0):
-            bad_events.append(t_shock[i])
+            bad_events.append(shock_timestamps[i])
             analysis_int_length = 30
             shock_type = 'N'
             jump_to_plotting = True
@@ -1333,7 +1333,7 @@ for i in range(0, N_sh):
 
         # if (normal_method_ID == 3):
         #     RESOLVE_ROUTINE, 'mva_normal'
-        #     mva_normal, t_shock, SC, normal, eigs, an_int, e_ratio
+        #     mva_normal, shock_timestamps, SC, normal, eigs, an_int, e_ratio
         #     normal = normal_sign(normal, type, V_vector_up)
 
         # double safety check that MX3 normal is perpendicular to correct vectors
@@ -1479,7 +1479,7 @@ for i in range(0, N_sh):
     SC_titles = ['ACE', 'Wind', 'STEREO A', 'STEREO B', 'Helios A', 'Helios B',
                  'Ulysses', 'Cluster 3', 'Cluster 1', 'Cluster 4', 'OMNI',
                  'Voyager 1', 'Voyager 2', 'DSCOVR', 'PSP', 'SolO']
-    shock_time = datetime.fromtimestamp(t_shock[i])
+    shock_time = datetime.fromtimestamp(shock_timestamps[i])
 
     mag_res_format = '(F9.1)'
     if sc_id in [2, 3, 11, 12]:
@@ -1665,7 +1665,7 @@ for i in range(0, N_sh):
     # --------------------------------------------------------------------------
 
     t_print = time.strftime("%Y    %#m    %#d    %#H    %#M    %#S",
-                            time.localtime(t_shock[i]))
+                            time.localtime(shock_timestamps[i]))
     with open(shock_times_out_fname, 'a') as file3:
         # Write to file (assuming 'filnum1' is the file object)
         if type != 0 and not time_adjusted:
