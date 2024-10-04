@@ -939,9 +939,10 @@ for i in range(0, N_sh):
     helios_dataset_flag = 0
 
     # Next: Checking that there is enough datapoints around the shock.
-    # If not, the length of the analysis interval is increased until either the
-    # upper limit for the interval length is reached or upstream and downstream
-    # intervals both contain at least 3 data points
+    # If not, the length of the analysis interval is increased until
+    # either the upper limit for the interval length is reached or
+    # upstream and downstream intervals both contain at least 3 data
+    # points
 
     # Test iteratively if the shock fulfils the criteria of an FF shock
     # (loop index 0) or an FR shock (loop index 1)
@@ -1027,95 +1028,100 @@ for i in range(0, N_sh):
                     break
 
         # Jump straight to FR-type check if there is not enough data
-        if ((too_few_mag_points == 1) or (too_few_pla_points == 1)) and (
-                j == 1):
+        if ((too_few_mag_points == 1 or too_few_pla_points == 1)
+                and j == 1):
             continue
 
-        # If FR-type check does not contains enough data points, reject the whole
-        # event
+        # If the FR-type check does not contain enough data points,
+        # reject the whole event
         jump_to_plotting = False
-        if ((too_few_mag_points == 1) or (too_few_pla_points == 1)) and (
-                j == 0):
+        if ((too_few_mag_points == 1 or too_few_pla_points == 1)
+                and j == 0):
             bad_events.append(shock_timestamps[i])
             analysis_int_length = 30
             shock_type = 'N'
             jump_to_plotting = True
             break
 
-        # The analysis intervals used for calculating upstream and downstream
-        # mean values
+        # The analysis intervals used for calculating the upstream and
+        # downstream mean values
         t_up = t_up_both[j]
         t_down = t_down_both[j]
 
-        # Length of the analysis interval
-        analysis_int_length = (t_up[1] - t_up[0]) / 60.
+        # Length of the analysis interval in minutes
+        analysis_int_length = (t_up[1] - t_up[0]) / 60
 
-        # Calculating the mean and standard deviation values of the parameters
-        # in the upstream and downstream
-        mag_up_dct = mean_data(mag_dataframe, mag_vars, t_up)
-        mag_down_dct = mean_data(mag_dataframe, mag_vars, t_down)
-        pla_up_dct = mean_data(pla_dataframe, pla_vars, t_up)
-        pla_down_dct = mean_data(pla_dataframe, pla_vars, t_down)
+        # Calculating the mean and standard deviation values of the
+        # parameters in the upstream and downstream intervals
+        mag_up_dict = mean_data(mag_dataframe, mag_vars, t_up)
+        mag_down_dict = mean_data(mag_dataframe, mag_vars, t_down)
+        pla_up_dict = mean_data(pla_dataframe, pla_vars, t_up)
+        pla_down_dict = mean_data(pla_dataframe, pla_vars, t_down)
 
         # The mean values of the parameters assigned explicitly
-        B_mean_up = mag_up_dct[0]["B"]
-        B_mean_down = mag_down_dct[0]["B"]
-        B_vector_up = [mag_up_dct[0]["Bx"], mag_up_dct[0]["By"],
-                       mag_up_dct[0]["Bz"]]
-        B_vector_down = [mag_down_dct[0]["Bx"], mag_down_dct[0]["By"],
-                         mag_down_dct[0]["Bz"]]
-        Np_mean_up = pla_up_dct[0]["Np"]
-        Np_mean_down = pla_down_dct[0]["Np"]
-        Tp_mean_up = pla_up_dct[0]["Tp"]
-        Tp_mean_down = pla_down_dct[0]["Tp"]
-        V_mean_up = pla_up_dct[0]["V"]
-        V_mean_down = pla_down_dct[0]["V"]
-        V_vector_up = [pla_up_dct[0]["Vx"], pla_up_dct[0]["Vy"],
-                       pla_up_dct[0]["Vz"]]
-        V_vector_down = [pla_down_dct[0]["Vx"], pla_down_dct[0]["Vy"],
-                         pla_down_dct[0]["Vz"]]
+        B_mean_up = mag_up_dict[0]['B']
+        B_mean_down = mag_down_dict[0]['B']
+        B_vector_up = [
+            mag_up_dict[0]['Bx'], mag_up_dict[0]['By'], mag_up_dict[0]['Bz']]
+        B_vector_down = [
+            mag_down_dict[0]['Bx'], mag_down_dict[0]['By'],
+            mag_down_dict[0]['Bz']]
+        Np_mean_up = pla_up_dict[0]['Np']
+        Np_mean_down = pla_down_dict[0]['Np']
+        Tp_mean_up = pla_up_dict[0]['Tp']
+        Tp_mean_down = pla_down_dict[0]['Tp']
+        V_mean_up = pla_up_dict[0]['V']
+        V_mean_down = pla_down_dict[0]['V']
+        V_vector_up = [
+            pla_up_dict[0]['Vx'], pla_up_dict[0]['Vy'], pla_up_dict[0]['Vz']]
+        V_vector_down = [
+            pla_down_dict[0]['Vx'], pla_down_dict[0]['Vy'],
+            pla_down_dict[0]['Vz']]
 
-        B_rat = B_mean_down / B_mean_up
-        Np_rat = Np_mean_down / Np_mean_up
-        Tp_rat = Tp_mean_down / Tp_mean_up
+        B_ratio = B_mean_down / B_mean_up
+        Np_ratio = Np_mean_down / Np_mean_up
+        Tp_ratio = Tp_mean_down / Tp_mean_up
         V_jump = abs(V_mean_down - V_mean_up)
 
-        # Shock criteria (type: 0 = 'not a shock', 1 = 'FF-shock', 2 = 'FR-shock')
+        # Shock criteria (type: 0 = not a shock, 1 = FF-shock,
+        # 2 = FR-shock)
         type = 0
 
-        if (B_rat >= 1.2) and (Np_rat >= 1.2) and (Tp_rat > 1 / 1.2):
-
+        if (B_ratio >= 1.2) and (Np_ratio >= 1.2) and (Tp_ratio > 1 / 1.2):
             if (j == 0) and ((V_mean_down - V_mean_up) >= 20):  # FF shock
                 type = 1
                 break
-
             if (j == 1) and ((V_mean_up - V_mean_down) >= 20):  # FR shock
                 type = 2
                 break
 
     if not jump_to_plotting:
-        # IF VARIABLE plot_events = 0 THEN ANALYSIS IS NOT PERFORMED ANY
-        # FURTHER FOR EVENTS WHICH ARE NOT FF- OR FR- SHOCKS. THERE WILL BE NO
-        # OUTPUT OR PLOTS OF THESE EVENTS
+        # If the variable plot_events is set to 0 in the input file,
+        # then analysis is not performed any further for events which
+        # are not FF- or FR-shocks. There will be no output or plots
+        # produced of these events
         if (type == 0) and (plot_events == 0):
             continue
 
-        # ------------------------------------------------------------------------------
-        # Check the quality of the velocity vectors in the upstream and downstream area
-        # ------------------------------------------------------------------------------
+        # --------------------------------------------------------------
+        # Checking the quality of the velocity vectors in the upstream
+        # and downstream intervals
+        # --------------------------------------------------------------
 
-        # If there is no velocity data to determine velocity vector upstream and/or
-        # downstream then velocity vector is replaced by radial vector with magnitude of
-        # bulk speed V. USED ONLY FOR STEREO A AND B SPACECRAFT
+        # Note regarding velocity data for STEREO-A and STEREO-B:
+        # If there is no velocity data to determine the velocity vector
+        # upstream and/or downstream then the velocity vector is
+        # replaced by a radial vector with the magnitude of the bulk
+        # speed, i.e., V
 
         bad_vel = 0
         # Filter the DataFrame for t_up range and check for finite values
-        df_up = pla_dataframe[(pla_dataframe['EPOCH'] >= t_up[0]) & (
-                    pla_dataframe['EPOCH'] <= t_up[1])]
-        df_down = pla_dataframe[(pla_dataframe['EPOCH'] >= t_down[0]) & (
-                    pla_dataframe['EPOCH'] <= t_down[1])]
-        finite_up = df_up[['Vx', 'Vy', 'Vz']].map(np.isfinite).all(axis=1)
-        finite_down = df_down[['Vx', 'Vy', 'Vz']].map(np.isfinite).all(axis=1)
+        df_up = pla_dataframe[
+            (pla_dataframe['EPOCH'] >= t_up[0]) & (pla_dataframe['EPOCH'] <= t_up[1])]
+        df_down = pla_dataframe[
+            (pla_dataframe['EPOCH'] >= t_down[0]) & (pla_dataframe['EPOCH'] <= t_down[1])]
+        finite_up = df_up[['Vx', 'Vy', 'Vz']].notna().all(axis=1)
+        finite_down = df_down[['Vx', 'Vy', 'Vz']].notna().all(axis=1)
         gg_up = df_up.index[finite_up].tolist()
         gg_down = df_down.index[finite_down].tolist()
 
@@ -1123,7 +1129,7 @@ for i in range(0, N_sh):
         if len(gg_up) == 0 or len(gg_down) == 0:
             bad_vel = 1
 
-        if bad_vel == 1 and (sc == 2 or sc == 3):
+        if bad_vel == 1 and sc in [2, 3]:
             # Change the time series variables
             pla_pnts = len(pla_dataframe['EPOCH'])
             pla_dataframe['Vx'] = pla_dataframe['V']
@@ -1134,33 +1140,33 @@ for i in range(0, N_sh):
             V_vector_up = np.array([V_mean_up, 0, 0])
             V_vector_down = np.array([V_mean_down, 0, 0])
 
-            pla_up_dct[0]['Vx'] = V_mean_up
-            pla_up_dct[0]['Vy'] = V_mean_up
-            pla_up_dct[0]['Vz'] = V_mean_up
+            pla_up_dict[0]['Vx'] = V_mean_up
+            pla_up_dict[0]['Vy'] = V_mean_up
+            pla_up_dict[0]['Vz'] = V_mean_up
 
-            pla_down_dct[0]['Vx'] = V_mean_down
-            pla_down_dct[0]['Vy'] = V_mean_down
-            pla_down_dct[0]['Vz'] = V_mean_down
+            pla_down_dict[0]['Vx'] = V_mean_down
+            pla_down_dict[0]['Vy'] = V_mean_down
+            pla_down_dict[0]['Vz'] = V_mean_down
 
-            pla_up_dct[1]['Vx'] = pla_up_dct[1]['V']
-            pla_down_dct[1]['Vx'] = pla_down_dct[1]['V']
+            pla_up_dict[1]['Vx'] = pla_up_dict[1]['V']
+            pla_down_dict[1]['Vx'] = pla_down_dict[1]['V']
 
-            pla_up_dct[0]['Vy'] = 0
-            pla_up_dct[0]['Vz'] = 0
+            pla_up_dict[0]['Vy'] = 0
+            pla_up_dict[0]['Vz'] = 0
 
-            pla_up_dct[1]['Vy'] = 0
-            pla_up_dct[1]['Vz'] = 0
+            pla_up_dict[1]['Vy'] = 0
+            pla_up_dict[1]['Vz'] = 0
 
-            pla_down_dct[0]['Vy'] = 0
-            pla_down_dct[0]['Vz'] = 0
+            pla_down_dict[0]['Vy'] = 0
+            pla_down_dict[0]['Vz'] = 0
 
-            pla_down_dct[1]['Vy'] = 0
-            pla_down_dct[1]['Vz'] = 0
+            pla_down_dict[1]['Vy'] = 0
+            pla_down_dict[1]['Vz'] = 0
 
-        # --------------------------------------------------------------------------
-        # Calculate mean resolution of the magnetic field and plasma data over the
-        # analysis intervals
-        # --------------------------------------------------------------------------
+        # --------------------------------------------------------------
+        # Calculating the mean resolution of the magnetic field and
+        # plasma data over the analysis intervals
+        # --------------------------------------------------------------
 
         avg_res_mag = calculate_mean_resolution(
             mag_dataframe, mag_vars, t_up, t_down, sc, helios_dataset_flag)
@@ -1168,15 +1174,16 @@ for i in range(0, N_sh):
             pla_dataframe, pla_vars, t_up, t_down, sc, helios_dataset_flag)
 
         if not avg_res_mag or not avg_res_pla:
-            print("problem with mean res calculations")
+            print("There is a problem calculating the mean data resolutions.")
             continue
 
-        # --------------------------------------------------------------------------
-        # Calculating the mean values of plasma characteristics (sound, Alfvén and
-        # magnetosonic speed and plasma beta) upstream
-        # --------------------------------------------------------------------------
+        # --------------------------------------------------------------
+        # Calculating the mean values of plasma characteristics (sound
+        # speed, Alfvén speed, magnetosonic speed, and plasma beta)
+        # upstream of the shock
+        # --------------------------------------------------------------
 
-        # Averaging bin radiuses of plasma data for resampling
+        # Averaging bin radii of plasma data for resampling
         if sc == 0:
             bin_rad = 32.0  # i.e. 64 / 2 --> (+- 32sec)
         if sc == 1:
@@ -1208,38 +1215,36 @@ for i in range(0, N_sh):
         Bt = mag_dataframe[(mag_dataframe['EPOCH'] >= t_up[0]) & (
                     mag_dataframe['EPOCH'] <= t_up[1])]['B']
 
-        # Magnetic field data is resampled to the resolution of plasma data if
-        # B-data has higher resolution
-        if (sc in [0, 1, 2, 3, 6, 11, 12, 13, 15]) or (
-                sc in [4, 5] and helios_dataset_flag == 0):
-
-            B_rs = resample(mag_dataframe['B'], mag_dataframe['EPOCH'],
-                            pla_dataframe['EPOCH'], t_up, sc, bin_rad)
+        # Magnetic field data is resampled to the plasma data resolution
+        # it has a higher resolution
+        if (sc in [0, 1, 2, 3, 6, 11, 12, 13, 15]
+                or (sc in [4, 5] and helios_dataset_flag == 0)):
+            B_rs = resample(
+                mag_dataframe['B'], mag_dataframe['EPOCH'],
+                pla_dataframe['EPOCH'], t_up, sc, bin_rad)
             B_is_averaged = 1
-
-        # PSP - plasma data is higher res than mag data
-        elif sc in [14]:
-            Np = resample(pla_dataframe['Np'], pla_dataframe['EPOCH'],
-                          mag_dataframe['EPOCH'], t_up, sc, bin_rad)
-            Tp = resample(pla_dataframe['Tp'], pla_dataframe['EPOCH'],
-                          mag_dataframe['EPOCH'], t_up, sc, bin_rad)
-            V = resample(pla_dataframe['V'], pla_dataframe['EPOCH'],
-                         mag_dataframe['EPOCH'], t_up, sc, bin_rad)
+        # For PSP the plasma data is higher resolution than magnetic
+        # field data
+        elif sc == 14:
+            Np = resample(
+                pla_dataframe['Np'], pla_dataframe['EPOCH'],
+                mag_dataframe['EPOCH'], t_up, sc, bin_rad)
+            Tp = resample(
+                pla_dataframe['Tp'], pla_dataframe['EPOCH'],
+                mag_dataframe['EPOCH'], t_up, sc, bin_rad)
+            V = resample(
+                pla_dataframe['V'], pla_dataframe['EPOCH'],
+                mag_dataframe['EPOCH'], t_up, sc, bin_rad)
             B_rs = Bt
-
         else:
-            # For Cluster only linear interpolation is required since time tags
-            # are almost the same (difference in order of ms)
-            if (sc == 7) or (sc == 8) or (sc == 9):
-                B_rs = np.interp(pla_dataframe[
-                                     (pla_dataframe['EPOCH'] >= t_up[0]) & (
-                                                 pla_dataframe['EPOCH'] <= t_up[
-                                             1])]['EPOCH'],
-                                 mag_dataframe['EPOCH'], mag_dataframe['B'])
-
+            # For Cluster only linear interpolation is required since
+            # time tags are almost the same (difference in order of ms)
+            if sc in [7, 8, 9]:
+                B_rs = np.interp(
+                    pla_dataframe[(pla_dataframe['EPOCH'] >= t_up[0]) & (pla_dataframe['EPOCH'] <= t_up[1])]['EPOCH'],mag_dataframe['EPOCH'], mag_dataframe['B'])
             else:
-                B_rs = mag_dataframe[(mag_dataframe['EPOCH'] >= t_up[0]) & (
-                            mag_dataframe['EPOCH'] <= t_up[1])]['B']
+                B_rs = mag_dataframe[
+                    (mag_dataframe['EPOCH'] >= t_up[0]) & (mag_dataframe['EPOCH'] <= t_up[1])]['B']
                 B_is_averaged = 0
 
         # Constants
@@ -1252,29 +1257,31 @@ for i in range(0, N_sh):
         # Radial distance for electron temp calculations
         r_AU = 1
 
-        # Other SCs than Helios, Ulysses and Voyager, PSP and SOlo are approximated to be at 1 AU
-        if (sc == 4) or (sc == 5) or (sc == 6) or (sc == 11) or (
-                sc == 12) or (sc == 14) or (sc == 15):
+        # Spacecraft other than Helios, Ulysses, Voyager, PSP, and SolO
+        # are approximated to be at 1 AU
+        if sc in [4, 5, 6, 11, 12, 14, 15]:
             r_AU = np.abs(sc_pos.iloc[0])
 
         A = 1.462768889297766 * 1e+05
         B = -0.664193092275818
 
-        # Creating electron temperature dataseries (depends on the radial distance from the Sun)
+        # Creating an electron temperature array (depends on the radial
+        # distance from the Sun)
         Te = np.full(len(Tp), A * r_AU ** B)
 
-        # Standard deviation (estimated error) of the electron temperature.
-        # Determined as the estimated standard deviation of Te(R_AU)-fit
+        # Standard deviation (estimated error) of the electron
+        # temperature. Determined as the estimated standard deviation of
+        # the Te(R_AU)-fit
         Te_std = 4.971842720311243 * 1e+04
 
         # Plasma characteristics
         B2 = B_rs * 1e-9
         Np2 = Np * 1e+6
-        Cs = (((gamma * kB) * (Tp + Te)) / mp) ** (0.5) / 1000
+        Cs = (((gamma*kB)*(Tp + Te))/mp)**0.5/ 1000
         V_A = (B2 / (np.sqrt(u0 * mp * Np2))) / 1000  # Alfven speed
-        Vms = np.sqrt(V_A ** 2 + Cs ** 2)  # Magnetosonic speed
-        Dp = Np * V ** 2 * (1.67e-6) * (1.16)  # Dynamic pressure
-        beta = (2 * Np2 * kB * (Tp + Te) * u0) / (B2) ** 2  # Plasma beta
+        Vms = np.sqrt(V_A**2 + Cs**2)  # Magnetosonic speed
+        Dp = Np * V**2 * 1.67e-6 * 1.16  # Dynamic pressure
+        beta = (2*Np2*kB*(Tp + Te)*u0)/B2**2  # Plasma beta
 
         # Form dataframe time series for these parameters
         # Extract timestamps from 'EPOCH' column of pla_dataframe
@@ -1292,35 +1299,38 @@ for i in range(0, N_sh):
             'V_A': V_A,
             'Vms': Vms,
             'beta': beta,
-            'Dp': Dp
-        })
+            'Dp': Dp})
 
         # Calculate the mean values and standard deviations in the upstream area
-        pla_char_up_dct = mean_data(
+        pla_char_up_dict = mean_data(
             pla_char_dataframe, ['Cs', 'V_A', 'Vms', 'beta', 'Dp'], t_up)
 
         # For error analysis purposes calculate also other means
         # (basically partial derivatives)
         doo_Cs_doo_Te = kB / (2 * mp) * np.nanmean(
-            (1000. * pla_char_dataframe['Cs']) ** (-1)) / 1000
+            (1000. * pla_char_dataframe['Cs'])**(-1)) / 1000
         doo_Vms_doo_Te = kB / (2 * mp) * np.nanmean(
-            (1000. * pla_char_dataframe['Vms']) ** (-1)) / 1000
-        doo_beta_doo_Te = np.nanmean(2 * u0 * kB * Np2 / B2 ** 2)
+            (1000. * pla_char_dataframe['Vms'])**(-1)) / 1000
+        doo_beta_doo_Te = np.nanmean(2 * u0 * kB * Np2 / B2**2)
 
         # Extract the mean values
-        Cs_mean_up = pla_char_up_dct[0]['Cs']
-        V_A_mean_up = pla_char_up_dct[0]['V_A']
-        Vms_mean_up = pla_char_up_dct[0]['Vms']
-        beta_mean_up = pla_char_up_dct[0]['beta']
-        Dp_mean_up = pla_char_up_dct[0]['Dp']
+        Cs_mean_up = pla_char_up_dict[0]['Cs']
+        V_A_mean_up = pla_char_up_dict[0]['V_A']
+        Vms_mean_up = pla_char_up_dict[0]['Vms']
+        beta_mean_up = pla_char_up_dict[0]['beta']
+        Dp_mean_up = pla_char_up_dict[0]['Dp']
 
-        # --------------------------------------------------------------------------
+        # --------------------------------------------------------------
         # Calculating the normal vector of the shock
-        # --------------------------------------------------------------------------
+        # --------------------------------------------------------------
 
-        # method IDs: 0=MX3-method,1=MFC-method,2=MX1+MX2-avg-method,3=MVA-analysis
+        # Method IDs:
+        #   0 = MX3,
+        #   1 = MFC,
+        #   2 = MX1 + MX2 average,
+        #   3 = MVA (not implemented)
 
-        normal_method_id = orig_normal_method_id  # Defined in the beginning of code
+        normal_method_id = orig_normal_method_id
 
         # If there is no velocity vector data additional method is used
         if bad_vel == 1:
@@ -1328,18 +1338,24 @@ for i in range(0, N_sh):
 
         normal_eq_input = {}
 
-        normal = shock_normal(type, B_vector_up, B_vector_down, V_vector_up,
-                              V_vector_down, normal_method_id)
+        normal = shock_normal(
+            type, B_vector_up, B_vector_down,
+            V_vector_up, V_vector_down,
+            normal_method_id)
 
-        # normal_method_id = 3: use Minimum Variance Analysis of magnetic field data
-        # to determine the normal (NOT USED AT THE MOMENT)
-
-        # if (normal_method_id == 3):
+        # --------------------------------------------------------------
+        # WILL BE REMOVED IN THE FUTURE
+        # normal_method_id = 3: use Minimum Variance Analysis of
+        # magnetic field data to determine the normal (NOT IMPLEMENTED
+        # AT THE MOMENT)
+        # if normal_method_id == 3:
+        #     This is from the IDL code
         #     RESOLVE_ROUTINE, 'mva_normal'
         #     mva_normal, shock_timestamps, SC, normal, eigs, an_int, e_ratio
         #     normal = normal_sign(normal, type, V_vector_up)
 
-        # double safety check that MX3 normal is perpendicular to correct vectors
+        # Double check that the normal vector given by the MX3 method is
+        # perpendicular to all the correct vectors
         B_vector_down = np.array(B_vector_down)
         B_vector_up = np.array(B_vector_up)
         V_vector_down = np.array(V_vector_down)
@@ -1348,19 +1364,20 @@ for i in range(0, N_sh):
         delta_B = B_vector_down - B_vector_up
         delta_V = V_vector_down - V_vector_up
 
-        if (np.dot(delta_B, normal) > 1e-12 or
-            np.dot(np.cross(delta_B, delta_V),
-                   normal) > 1e-12) and normal_method_id == 0:
+        if ((np.dot(delta_B, normal) > 1e-12
+             or np.dot(np.cross(delta_B, delta_V), normal) > 1e-12)
+                and normal_method_id == 0):
             raise ValueError(
-                'MX3-normal is not correct: should be perp to (delta_V x delta_B) and delta_B')
+                "The normal vector calculated using the MX3 method is not "
+                "correct: the vector should be perpendicular to (ΔV x ΔB) "
+                "and ΔB")
 
         # --------------------------------------------------------------------------
-        # Calculation of shock speed
+        # Calculating the shock speed
         # --------------------------------------------------------------------------
 
         # Calculate the flux vector
-        flux = (Np_mean_down * V_vector_down - Np_mean_up * V_vector_up) / (
-                    Np_mean_down - Np_mean_up)
+        flux = (Np_mean_down*V_vector_down - Np_mean_up*V_vector_up)/(Np_mean_down - Np_mean_up)
 
         # Calculate V_shock as the absolute value of the dot product of the flux vector with the normal vector
         V_shock = abs(np.dot(flux, normal))
@@ -1397,69 +1414,69 @@ for i in range(0, N_sh):
         if type == 2:
             shock_type = 'reverse'
 
-        mag_up = [mag_up_dct[0]["B"],
-                  mag_up_dct[0]["Bx"],
-                  mag_up_dct[0]["By"],
-                  mag_up_dct[0]["Bz"]
+        mag_up = [mag_up_dict[0]["B"],
+                  mag_up_dict[0]["Bx"],
+                  mag_up_dict[0]["By"],
+                  mag_up_dict[0]["Bz"]
                   ]
-        mag_up_std = [mag_up_dct[1]["B"],
-                      mag_up_dct[1]["Bx"],
-                      mag_up_dct[1]["By"],
-                      mag_up_dct[1]["Bz"]]
-        mag_down = [mag_down_dct[0]["B"],
-                    mag_down_dct[0]["Bx"],
-                    mag_down_dct[0]["By"],
-                    mag_down_dct[0]["Bz"]
+        mag_up_std = [mag_up_dict[1]["B"],
+                      mag_up_dict[1]["Bx"],
+                      mag_up_dict[1]["By"],
+                      mag_up_dict[1]["Bz"]]
+        mag_down = [mag_down_dict[0]["B"],
+                    mag_down_dict[0]["Bx"],
+                    mag_down_dict[0]["By"],
+                    mag_down_dict[0]["Bz"]
                     ]
-        mag_down_std = [mag_down_dct[1]["B"],
-                        mag_down_dct[1]["Bx"],
-                        mag_down_dct[1]["By"],
-                        mag_down_dct[1]["Bz"]]
+        mag_down_std = [mag_down_dict[1]["B"],
+                        mag_down_dict[1]["Bx"],
+                        mag_down_dict[1]["By"],
+                        mag_down_dict[1]["Bz"]]
 
         pla_up = [
-            pla_up_dct[0]["Np"],
-            pla_up_dct[0]["Tp"],
-            pla_up_dct[0]["V"],
-            pla_up_dct[0]["Vx"],
-            pla_up_dct[0]["Vy"],
-            pla_up_dct[0]["Vz"]
+            pla_up_dict[0]["Np"],
+            pla_up_dict[0]["Tp"],
+            pla_up_dict[0]["V"],
+            pla_up_dict[0]["Vx"],
+            pla_up_dict[0]["Vy"],
+            pla_up_dict[0]["Vz"]
         ]
 
-        pla_up_std = [pla_up_dct[1]["Np"],
-                      pla_up_dct[1]["Tp"],
-                      pla_up_dct[1]["V"],
-                      pla_up_dct[1]["Vx"],
-                      pla_up_dct[1]["Vy"],
-                      pla_up_dct[1]["Vz"]
+        pla_up_std = [pla_up_dict[1]["Np"],
+                      pla_up_dict[1]["Tp"],
+                      pla_up_dict[1]["V"],
+                      pla_up_dict[1]["Vx"],
+                      pla_up_dict[1]["Vy"],
+                      pla_up_dict[1]["Vz"]
                       ]
 
         pla_down = [
-            pla_down_dct[0]["Np"],
-            pla_down_dct[0]["Tp"],
-            pla_down_dct[0]["V"],
-            pla_down_dct[0]["Vx"],
-            pla_down_dct[0]["Vy"],
-            pla_down_dct[0]["Vz"]
+            pla_down_dict[0]["Np"],
+            pla_down_dict[0]["Tp"],
+            pla_down_dict[0]["V"],
+            pla_down_dict[0]["Vx"],
+            pla_down_dict[0]["Vy"],
+            pla_down_dict[0]["Vz"]
         ]
-        pla_down_std = [pla_down_dct[1]["Np"],
-                        pla_down_dct[1]["Tp"],
-                        pla_down_dct[1]["V"],
-                        pla_down_dct[1]["Vx"],
-                        pla_down_dct[1]["Vy"],
-                        pla_down_dct[1]["Vz"]]
+        pla_down_std = [pla_down_dict[1]["Np"],
+                        pla_down_dict[1]["Tp"],
+                        pla_down_dict[1]["V"],
+                        pla_down_dict[1]["Vx"],
+                        pla_down_dict[1]["Vy"],
+                        pla_down_dict[1]["Vz"]]
 
-        char_up = [pla_char_up_dct[0]["Cs"],
-                   pla_char_up_dct[0]["V_A"],
-                   pla_char_up_dct[0]["Vms"],
-                   pla_char_up_dct[0]["beta"],
-                   pla_char_up_dct[0]["Dp"]
+        char_up = [pla_char_up_dict[0]["Cs"],
+                   pla_char_up_dict[0]["V_A"],
+                   pla_char_up_dict[0]["Vms"],
+                   pla_char_up_dict[0]["beta"],
+                   pla_char_up_dict[0]["Dp"]
                    ]
 
-        char_std_up = [pla_char_up_dct[1]["Cs"],
-                       pla_char_up_dct[1]["V_A"],
-                       pla_char_up_dct[1]["Vms"],
-                       pla_char_up_dct[1]["beta"],
-                       pla_char_up_dct[1]["Dp"]]
+        char_std_up = [pla_char_up_dict[1]["Cs"],
+                       pla_char_up_dict[1]["V_A"],
+                       pla_char_up_dict[1]["Vms"],
+                       pla_char_up_dict[1]["beta"],
+                       pla_char_up_dict[1]["Dp"]]
 
         errors = error_analysis(mag_up, mag_up_std, mag_down, mag_down_std,
                                 pla_up,
@@ -1690,7 +1707,7 @@ for i in range(0, N_sh):
         f"{B_vector_down[0]:8.4f} +- {errors[5]:8.4f}    "
         f"{B_vector_down[1]:8.4f} +- {errors[6]:8.4f}    "
         f"{B_vector_down[2]:8.4f} +- {errors[7]:8.4f}    "
-        f"{B_rat:8.4f} +- {errors[8]:8.4f}    "
+        f"{B_ratio:8.4f} +- {errors[8]:8.4f}    "
         f"{V_mean_up:7.4f} +- {errors[9]:7.4f}    "
         f"{V_vector_up[0]:7.4f} +- {errors[10]:7.4f}    "
         f"{V_vector_up[1]:7.4f} +- {errors[11]:7.4f}    "
@@ -1702,10 +1719,10 @@ for i in range(0, N_sh):
         f"{V_jump:7.4f} +- {errors[17]:7.4f}    "
         f"{Np_mean_up:7.4f} +- {errors[18]:7.4f}    "
         f"{Np_mean_down:7.4f} +- {errors[19]:7.4f}    "
-        f"{Np_rat:7.4f} +- {errors[20]:7.4f}    "
+        f"{Np_ratio:7.4f} +- {errors[20]:7.4f}    "
         f"{Tp_mean_up:7.4f} +- {errors[21]:7.4f}    "
         f"{Tp_mean_down:7.4f} +- {errors[22]:7.4f}    "
-        f"{Tp_rat:7.4f} +- {errors[23]:7.4f}    "
+        f"{Tp_ratio:7.4f} +- {errors[23]:7.4f}    "
         f"{Cs_mean_up:7.4f} +- {errors[24]:7.4f}    "
         f"{V_A_mean_up:7.4f} +- {errors[25]:7.4f}    "
         f"{Vms_mean_up:7.4f} +- {errors[26]:7.4f}    "
@@ -1741,7 +1758,7 @@ for i in range(0, N_sh):
         f"{B_vector_down[0]:.4f},{errors[5]:.4f},"
         f"{B_vector_down[1]:.4f},{errors[6]:.4f},"
         f"{B_vector_down[2]:.4f},{errors[7]:.4f},"
-        f"{B_rat:.4f},{errors[8]:.4f},"
+        f"{B_ratio:.4f},{errors[8]:.4f},"
         f"{V_mean_up:.4f},{errors[9]:.4f},"
         f"{V_vector_up[0]:.4f},{errors[10]:.4f},"
         f"{V_vector_up[1]:.4f},{errors[11]:.4f},"
@@ -1753,10 +1770,10 @@ for i in range(0, N_sh):
         f"{V_jump:.4f},{errors[17]:.4f},"
         f"{Np_mean_up:.4f},{errors[18]:.4f},"
         f"{Np_mean_down:.4f},{errors[19]:.4f},"
-        f"{Np_rat:.4f},{errors[20]:.4f},"
+        f"{Np_ratio:.4f},{errors[20]:.4f},"
         f"{Tp_mean_up:.4f},{errors[21]:.4f},"
         f"{Tp_mean_down:.4f},{errors[22]:.4f},"
-        f"{Tp_rat:.4f},{errors[23]:.4f},"
+        f"{Tp_ratio:.4f},{errors[23]:.4f},"
         f"{Cs_mean_up:.4f},{errors[24]:.4f},"
         f"{V_A_mean_up:.4f},{errors[25]:.4f},"
         f"{Vms_mean_up:.4f},{errors[26]:.4f},"
